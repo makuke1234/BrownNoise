@@ -12,6 +12,14 @@ enum circuitType
 
 #define DROP1_SIZE 3
 
+enum unitType
+{
+	utype_nv_rthz,
+	utype_uv_rms
+};
+
+#define DROPNOISEU_SIZE 2
+
 
 typedef struct bnui
 {
@@ -20,6 +28,9 @@ typedef struct bnui
 	
 	HWND circuitTypeHandle;
 	enum circuitType circuitTypeIdx;
+
+	HWND noiseTextHandle, noiseUnitHandle;
+	enum unitType noiseUnitIdx;
 
 } bnui_t;
 

@@ -8,11 +8,17 @@ static struct
 {
 	const wchar * drop1[DROP1_SIZE];
 
+	const wchar * dropnoiseu[DROPNOISEU_SIZE];
+
 } s_def = {
 	.drop1 = {
 		L"Normal feedback",
 		L"Differentiator",
 		L"Integrator"
+	},
+	.dropnoiseu = {
+		L"nV/\u221AHz",
+		L"\u00B5V RMS"
 	}
 };
 
@@ -291,6 +297,25 @@ void bn_createUI(bndata_t * restrict This)
 		s_def.drop1, DROP1_SIZE, 0
 	);
 	bn_setFont(This->ui.circuitTypeHandle, This->normFont);
+
+	This->ui.noiseTextHandle = CreateWindowExW(
+		WS_EX_CLIENTEDGE,
+		L"edit", L"",
+		WS_CHILD | WS_VISIBLE | ES_LEFT,
+		bn_defcdpi(NOISE_POS_X), bn_defcdpi(NOISE_POS_Y),
+		bn_defcdpi(NOISE_SIZE_X), bn_defcdpi(NOISE_SIZE_Y),
+		This->hwnd, (HMENU)IDT_NOISE,
+		This->hinst, NULL
+	);
+	bn_setFont(This->ui.noiseTextHandle, This->normFont);
+
+	This->ui.noiseUnitHandle = bn_createDrop(
+		bn_defcdpi(DROPNOISEU_POS_X), bn_defcdpi(DROPNOISEU_POS_Y),
+		bn_defcdpi(DROPNOISEU_SIZE_X), bn_defcdpi(DROPNOISEU_SIZE_Y),
+		This->hwnd, (HMENU)IDD_DROPNOISEU,
+		s_def.dropnoiseu, DROPNOISEU_SIZE, 0
+	);
+	bn_setFont(This->ui.noiseUnitHandle, This->normFont);
 }
 void bn_size(bndata_t * restrict This)
 {
@@ -329,15 +354,22 @@ void bn_paint(bndata_t * restrict This, HDC hdc)
 	SelectObject(hdcmem, oldbitmap);
 	DeleteDC(hdcmem);
 	
+	SetBkMode(hdc, TRANSPARENT);
+	SelectObject(hdc, This->normFont);
+
 	RECT tr = {
 		.left   = bn_defcdpi(DROP1S_POS_X),
 		.top    = bn_defcdpi(DROP1S_POS_Y),
 		.right  = tr.left + bn_defcdpi(DROP1S_SIZE_X),
 		.bottom = tr.top  + bn_defcdpi(DROP1S_SIZE_Y)
 	};
-	SetBkMode(hdc, TRANSPARENT);
-	SelectObject(hdc, This->normFont);
 	DrawTextW(hdc, L"Select circuit type:", -1, &tr, DT_SINGLELINE | DT_LEFT);
+
+	tr.left   = bn_defcdpi(NOISE_S_POS_X);
+	tr.top    = bn_defcdpi(NOISE_S_POS_Y);
+	tr.right  = tr.left + bn_defcdpi(NOISE_S_SIZE_X);
+	tr.bottom = tr.top  + bn_defcdpi(NOISE_S_SIZE_Y);
+	DrawTextW(hdc, L"Op-amp input noise voltage:", -1, &tr, DT_SINGLELINE | DT_LEFT);
 }
 void bn_command(bndata_t * restrict This, WPARAM wp, LPARAM lp)
 {
