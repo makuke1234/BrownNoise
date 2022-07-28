@@ -1,9 +1,13 @@
 #include "app.h"
 
-int main(int argc, char * argv[])
+int WINAPI wWinMain(HINSTANCE hInst, HINSTANCE hPrevInst, LPWSTR lpCmdArgs, int nCmdShow)
 {
+	bnUNUSED(hPrevInst);
+	bnUNUSED(lpCmdArgs);
+	bnUNUSED(nCmdShow);
+
 	bndata_t data = { 0 };
-	if (!bn_init(&data, argc, argv))
+	if (!bn_init(&data, hInst))
 	{
 		return -1;
 	}

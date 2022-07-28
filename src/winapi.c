@@ -26,12 +26,6 @@ bool bn_regClassBg(const wchar * restrict className, WNDPROC winProc, COLORREF r
 
 	return RegisterClassExW(&wc) != 0;
 }
-bool bn_compositionEnabled(void)
-{
-	BOOL compEnabled = FALSE;
-	bool result = (DwmIsCompositionEnabled(&compEnabled) == S_OK);
-	return result && compEnabled;
-}
 
 static int s_defaultDpi = USER_DEFAULT_SCREEN_DPI;
 

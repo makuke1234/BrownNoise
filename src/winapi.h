@@ -57,7 +57,6 @@ typedef long double f128;
 
 bool bn_regClass(const wchar * restrict className, WNDPROC winProc);
 bool bn_regClassBg(const wchar * restrict className, WNDPROC winProc, COLORREF rgbColor);
-bool bn_compositionEnabled(void);
 
 int bn_dpi(HWND hwnd);
 int bn_hdpi(HWND hwnd, int size);
