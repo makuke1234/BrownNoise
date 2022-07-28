@@ -1,6 +1,6 @@
 CC=gcc
 MACROS=-D UNICODE -D _UNICODE
-CDEFFLAGS=$(MACROS) -std=c2x -Wall -Wextra -Wpedantic -Wconversion -Wdouble-promotion -Wstrict-prototypes
+CDEFFLAGS=$(MACROS) -std=c99 -Wall -Wextra -Wpedantic -Wconversion -Wdouble-promotion -Wstrict-prototypes
 DebFlags=-g -O0 -D _DEBUG
 RelFlags=-O3 -Wl,--strip-all,--build-id=none,--gc-sections -D NDEBUG
 LIB=-lgdi32 -lcomctl32 -municode
