@@ -6,7 +6,7 @@
 [![Total downloads](https://img.shields.io/github/downloads/makuke1234/BrownNoise/total)](https://github.com/makuke1234/BrownNoise/releases)
 ![C version](https://img.shields.io/badge/version-C99-blue.svg)
 [![wakatime](https://wakatime.com/badge/github/makuke1234/BrownNoise.svg)](https://wakatime.com/badge/github/makuke1234/BrownNoise)
-![SLOC count](https://img.shields.io/badge/SLOC-1K-blue.svg)
+![SLOC count](https://img.shields.io/badge/SLOC-1000-blue.svg)
 
 **Please note that the application is currently under heavy development.**
 
