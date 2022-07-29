@@ -197,6 +197,38 @@ void bn_setFont(HWND hwnd, HFONT hfont)
 {
 	SendMessageW(hwnd, WM_SETFONT, (WPARAM)hfont, FALSE);
 }
+bool bn_getBorder(HWND hwnd, int * restrict bx, int * restrict by)
+{
+	RECT rc, rw;
+	if (!GetWindowRect(hwnd, &rw) || !GetClientRect(hwnd, &rc))
+	{
+		*bx = 0;
+		*by = 0;
+		return false;
+	}
+
+	// Calculate border overhang, this function will set the client area
+	*bx = (rw.right  - rw.left) - (rc.right  - rc.left);
+	*by = (rw.bottom - rw.top)  - (rc.bottom - rc.top);
+
+	return true;
+}
+void bn_setWindowSize(HWND hwnd, int cx, int cy)
+{
+	int bx, by;
+	bn_getBorder(hwnd, &bx, &by);
+	
+	SetWindowPos(
+		hwnd, NULL,
+		0,  0,
+		cx + bx, cy + by,
+		SWP_NOZORDER | SWP_NOMOVE | SWP_NOOWNERZORDER
+	);
+}
+bool bn_isnan(double x)
+{
+	return x != x;
+}
 
 
 LRESULT CALLBACK bn_proc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp)
@@ -393,34 +425,8 @@ void bn_createUI(bndata_t * restrict This)
 		This->hinst, NULL
 	);
 	bn_setFont(This->ui.resetBtn, This->normFont);
-}
-bool bn_getBorder(HWND hwnd, int * restrict bx, int * restrict by)
-{
-	RECT rc, rw;
-	if (!GetWindowRect(hwnd, &rw) || !GetClientRect(hwnd, &rc))
-	{
-		*bx = 0;
-		*by = 0;
-		return false;
-	}
 
-	// Calculate border overhang, this function will set the client area
-	*bx = (rw.right  - rw.left) - (rc.right  - rc.left);
-	*by = (rw.bottom - rw.top)  - (rc.bottom - rc.top);
-
-	return true;
-}
-void bn_setWindowSize(HWND hwnd, int cx, int cy)
-{
-	int bx, by;
-	bn_getBorder(hwnd, &bx, &by);
-	
-	SetWindowPos(
-		hwnd, NULL,
-		0,  0,
-		cx + bx, cy + by,
-		SWP_NOZORDER | SWP_NOMOVE | SWP_NOOWNERZORDER
-	);
+	SetFocus(This->ui.noiseTextHandle);
 }
 void bn_size(bndata_t * restrict This)
 {
@@ -537,7 +543,14 @@ void bn_paint(bndata_t * restrict This, HDC hdc)
 
 	wchar_t result[MAX_RESULT];
 	result[0] = L'\0';
-	swprintf_s(result, MAX_RESULT - 1, L"Optimal impedance: %.3g KOhms", This->impedance / 1000.0);
+	if (bn_isnan(This->impedance))
+	{
+		swprintf_s(result, MAX_RESULT - 1, L"Optimal impedance: NaN");
+	}
+	else
+	{
+		swprintf_s(result, MAX_RESULT - 1, L"Optimal impedance: %.3g KOhms", This->impedance / 1000.0);
+	}
 
 	DrawTextW(hdc, result, (int)wcsnlen_s(result, MAX_RESULT), &tr, DT_SINGLELINE | DT_LEFT);
 }
@@ -547,16 +560,22 @@ void bn_command(bndata_t * restrict This, WPARAM wp, LPARAM lp)
 	if (HIWORD(wp) == EN_CHANGE)
 	{
 		// Get text value
-		double value = 0.0;
+		wchar txt[MAX_RESULT];
+		txt[0] = L'\0';
+		GetWindowTextW((HWND)lp, txt, MAX_RESULT);
+		double value = _wtof(txt);
+		value = (value == 0) ? nan("") : value;
 
 		switch (LOWORD(wp))
 		{
 		case IDT_NOISE:
-			// Get value
+			This->ui.noiseValue = value;
 			break;
 		case IDT_BANDWIDTH:
+			This->ui.bwValue = value;
 			break;
 		case IDT_DESIREDN:
+			This->ui.desiredNValue = value;
 			break;
 		}
 
@@ -591,7 +610,10 @@ void bn_command(bndata_t * restrict This, WPARAM wp, LPARAM lp)
 		{
 		// Reset button
 		case IDM_RESET:
-			
+			SetWindowTextW(This->ui.noiseTextHandle,    L"");
+			SetWindowTextW(This->ui.bwTextHandle,       L"");
+			SetWindowTextW(This->ui.desiredNTextHandle, L"");
+			SetFocus(This->ui.noiseTextHandle);
 			break;
 		}
 	}
@@ -600,26 +622,50 @@ void bn_update(bndata_t * restrict This)
 {
 	const double oldImpedance = This->impedance;
 	
-	// Updates UI elements based on mode
 	const int type = This->ui.circuitTypeIdx;
 
 	const HBITMAP oldbmp = This->ui.bmp;
 	This->ui.bmp = This->ui.bmps[type];
-	switch (type)
+
+	if (bn_isnan(This->ui.noiseValue) || bn_isnan(This->ui.bwValue) || bn_isnan(This->ui.desiredNValue))
 	{
-	case circtype_norm:
-		break;
-	case circtype_diff:
-		break;
-	case circtype_integrator:
-		break;
+		This->impedance = nan("");
+	}
+	else
+	{
+		// Updates UI elements based on mode
+		switch (type)
+		{
+		case circtype_norm:
+			break;
+		case circtype_diff:
+			break;
+		case circtype_integrator:
+			break;
+		}
+		
+		// Calculates optimal impedance
 	}
 	
-	// Calculate optimal impedance
-	
 	// Refresh only if necessary
-	if ((This->ui.bmp != oldbmp) || (This->impedance != oldImpedance))
+	if (This->ui.bmp != oldbmp)
 	{
-		InvalidateRect(This->hwnd, NULL, FALSE);
+		const RECT br = {
+			.left   = 0,
+			.top    = 0,
+			.right  = bn_defcdpi(BMP_SIZE_X),
+			.bottom = bn_defcdpi(BMP_SIZE_Y)
+		};
+		InvalidateRect(This->hwnd, &br, FALSE);
+	}
+	if (This->impedance != oldImpedance)
+	{
+		const RECT tr = {
+			.left   = bn_defcdpi(RESULT_S_POS_X),
+			.top    = bn_defcdpi(RESULT_S_POS_Y),
+			.right  = tr.left + bn_defcdpi(RESULT_S_SIZE_X),
+			.bottom = tr.top  + bn_defcdpi(RESULT_S_SIZE_Y)
+		};
+		InvalidateRect(This->hwnd, &tr, TRUE);
 	}
 }

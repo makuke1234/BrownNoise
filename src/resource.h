@@ -24,6 +24,8 @@
 
 #define IDM_RESET 120
 
+
+
 #define SIZE_X 400
 
 #define BN_MARGIN 7

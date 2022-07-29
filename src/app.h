@@ -89,7 +89,7 @@ usize bn_getDropSel(HWND drop);
 void bn_setFont(HWND hwnd, HFONT hfont);
 bool bn_getBorder(HWND hwnd, int * restrict bx, int * restrict by);
 void bn_setWindowSize(HWND hwnd, int cx, int cy);
-
+bool bn_isnan(double x);
 
 LRESULT CALLBACK bn_proc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp);
 
