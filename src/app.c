@@ -9,6 +9,7 @@ static struct
 	const wchar * droptype[DROPTYPE_SIZE];
 	const wchar * dropnoiseu[DROPNOISEU_SIZE];
 	const wchar * dropbwunit[DROPBWUNIT_SIZE];
+	const wchar * droptunit[DROPTUNIT_SIZE];
 
 } s_def = {
 	.droptype = {
@@ -25,6 +26,11 @@ static struct
 		L"KHz",
 		L"MHz",
 		L"GHz"
+	},
+	.droptunit = {
+		L"\u00B0C",
+		L"Kelvin",
+		L"\u00B0F"
 	}
 };
 
@@ -57,6 +63,11 @@ bool bn_init(bndata_t * restrict This, HINSTANCE hInst)
 			.bwUnitHandle = NULL,
 			.bwUnitIdx    = bwutype_khz,
 			.bwValue      = 0.0,
+
+			.tempTextHandle = NULL,
+			.tempUnitHandle = NULL,
+			.tempUnitIdx    = tutype_celsius,
+			.tempValue      = 0.0,
 			
 			.desiredNTextHandle = NULL,
 			.desiredNUnitHandle = NULL,
@@ -399,6 +410,21 @@ void bn_createUI(bndata_t * restrict This)
 	);
 	bn_setFont(This->ui.bwUnitHandle, This->normFont);
 
+	This->ui.tempTextHandle = bn_createNumText(
+		bn_defcdpi(TEMP_POS_X),  bn_defcdpi(TEMP_POS_Y),
+		bn_defcdpi(TEMP_SIZE_X), bn_defcdpi(TEMP_SIZE_Y),
+		This->hwnd, (HMENU)IDT_TEMP
+	);
+	bn_setFont(This->ui.tempTextHandle, This->normFont);
+
+	This->ui.tempUnitHandle = bn_createDrop(
+		bn_defcdpi(DROPTUNIT_POS_X),  bn_defcdpi(DROPTUNIT_POS_Y),
+		bn_defcdpi(DROPTUNIT_SIZE_X), bn_defcdpi(DROPTUNIT_SIZE_Y),
+		This->hwnd, (HMENU)IDD_DROPTUNIT,
+		s_def.droptunit, DROPTUNIT_SIZE, This->ui.tempUnitIdx
+	);
+	bn_setFont(This->ui.tempUnitHandle, This->normFont);
+
 	This->ui.desiredNTextHandle = bn_createNumText(
 		bn_defcdpi(DESIREDN_POS_X),  bn_defcdpi(DESIREDN_POS_Y),
 		bn_defcdpi(DESIREDN_SIZE_X), bn_defcdpi(DESIREDN_SIZE_Y),
@@ -466,6 +492,19 @@ void bn_size(bndata_t * restrict This)
 	);
 
 	SetWindowPos(
+		This->ui.tempTextHandle, NULL,
+		bn_defcdpi(TEMP_POS_X),  bn_defcdpi(TEMP_POS_Y),
+		bn_defcdpi(TEMP_SIZE_X), bn_defcdpi(TEMP_SIZE_Y),
+		SWP_NOZORDER | SWP_NOOWNERZORDER
+	);
+	SetWindowPos(
+		This->ui.tempUnitHandle, NULL,
+		bn_defcdpi(DROPTUNIT_POS_X),  bn_defcdpi(DROPTUNIT_POS_Y),
+		bn_defcdpi(DROPTUNIT_SIZE_X), bn_defcdpi(DROPTUNIT_SIZE_Y),
+		SWP_NOZORDER | SWP_NOOWNERZORDER
+	);
+
+	SetWindowPos(
 		This->ui.desiredNTextHandle, NULL,
 		bn_defcdpi(DESIREDN_POS_X),  bn_defcdpi(DESIREDN_POS_Y),
 		bn_defcdpi(DESIREDN_SIZE_X), bn_defcdpi(DESIREDN_SIZE_Y),
@@ -529,6 +568,12 @@ void bn_paint(bndata_t * restrict This, HDC hdc)
 	tr.bottom = tr.top  + bn_defcdpi(BW_S_SIZE_Y);
 	DrawTextW(hdc, L"Bandwidth:", -1, &tr, DT_SINGLELINE | DT_LEFT);
 
+	tr.left   = bn_defcdpi(TEMP_S_POS_X);
+	tr.top    = bn_defcdpi(TEMP_S_POS_Y);
+	tr.right  = tr.left + bn_defcdpi(TEMP_S_SIZE_X);
+	tr.bottom = tr.top  + bn_defcdpi(TEMP_S_SIZE_Y);
+	DrawTextW(hdc, L"Operating temperature:", -1, &tr, DT_SINGLELINE | DT_LEFT);
+
 	tr.left   = bn_defcdpi(DESIREDN_S_POS_X);
 	tr.top    = bn_defcdpi(DESIREDN_S_POS_Y);
 	tr.right  = tr.left + bn_defcdpi(DESIREDN_S_SIZE_X);
@@ -574,6 +619,9 @@ void bn_command(bndata_t * restrict This, WPARAM wp, LPARAM lp)
 		case IDT_BANDWIDTH:
 			This->ui.bwValue = value;
 			break;
+		case IDT_TEMP:
+			This->ui.tempValue = value;
+			break;
 		case IDT_DESIREDN:
 			This->ui.desiredNValue = value;
 			break;
@@ -596,6 +644,9 @@ void bn_command(bndata_t * restrict This, WPARAM wp, LPARAM lp)
 		case IDD_DROPBWUNIT:
 			This->ui.bwUnitIdx = idx;
 			break;
+		case IDD_DROPTUNIT:
+			This->ui.tempUnitIdx = idx;
+			break;
 		case IDD_DROPDESIREDN:
 			This->ui.desiredNUnitIdx = idx;
 			break;
@@ -612,7 +663,9 @@ void bn_command(bndata_t * restrict This, WPARAM wp, LPARAM lp)
 		case IDM_RESET:
 			SetWindowTextW(This->ui.noiseTextHandle,    L"");
 			SetWindowTextW(This->ui.bwTextHandle,       L"");
+			SetWindowTextW(This->ui.tempTextHandle,     L"");
 			SetWindowTextW(This->ui.desiredNTextHandle, L"");
+			
 			SetFocus(This->ui.noiseTextHandle);
 			break;
 		}
@@ -627,7 +680,8 @@ void bn_update(bndata_t * restrict This)
 	const HBITMAP oldbmp = This->ui.bmp;
 	This->ui.bmp = This->ui.bmps[type];
 
-	if (bn_isnan(This->ui.noiseValue) || bn_isnan(This->ui.bwValue) || bn_isnan(This->ui.desiredNValue))
+	if (bn_isnan(This->ui.noiseValue) || bn_isnan(This->ui.bwValue) ||
+		bn_isnan(This->ui.tempValue) || bn_isnan(This->ui.desiredNValue))
 	{
 		This->impedance = nan("");
 	}

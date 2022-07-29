@@ -9,16 +9,16 @@ enum circuitType
 	circtype_diff,
 	circtype_integrator
 };
-
 #define DROPTYPE_SIZE 3
+
 
 enum nUnitType
 {
 	nutype_nv_rthz,
 	nutype_uv_rms
 };
-
 #define DROPNOISEU_SIZE 2
+
 
 enum bwUnitType
 {
@@ -27,8 +27,17 @@ enum bwUnitType
 	bwutype_mhz,
 	bwutype_ghz
 };
-
 #define DROPBWUNIT_SIZE 4
+
+
+enum tUnitType
+{
+	tutype_celsius,
+	tutype_kelvin,
+	tutype_fahrenheit
+};
+#define DROPTUNIT_SIZE 3
+
 
 #define MAX_RESULT 100
 
@@ -47,6 +56,10 @@ typedef struct bnui
 	HWND bwTextHandle, bwUnitHandle;
 	enum bwUnitType bwUnitIdx;
 	double bwValue;
+
+	HWND tempTextHandle, tempUnitHandle;
+	enum tUnitType tempUnitIdx;
+	double tempValue;
 
 	HWND desiredNTextHandle, desiredNUnitHandle;
 	enum nUnitType desiredNUnitIdx;
