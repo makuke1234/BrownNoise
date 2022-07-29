@@ -10,27 +10,49 @@ enum circuitType
 	circtype_integrator
 };
 
-#define DROP1_SIZE 3
+#define DROPTYPE_SIZE 3
 
-enum unitType
+enum nUnitType
 {
-	utype_nv_rthz,
-	utype_uv_rms
+	nutype_nv_rthz,
+	nutype_uv_rms
 };
 
 #define DROPNOISEU_SIZE 2
 
+enum bwUnitType
+{
+	bwutype_hz,
+	bwutype_khz,
+	bwutype_mhz,
+	bwutype_ghz
+};
+
+#define DROPBWUNIT_SIZE 4
+
+#define MAX_RESULT 100
 
 typedef struct bnui
 {
-	HBITMAP bmps[DROP1_SIZE];
+	HBITMAP bmps[DROPTYPE_SIZE];
 	HBITMAP bmp;
 	
 	HWND circuitTypeHandle;
 	enum circuitType circuitTypeIdx;
 
 	HWND noiseTextHandle, noiseUnitHandle;
-	enum unitType noiseUnitIdx;
+	enum nUnitType noiseUnitIdx;
+	double noiseValue;
+
+	HWND bwTextHandle, bwUnitHandle;
+	enum bwUnitType bwUnitIdx;
+	double bwValue;
+
+	HWND desiredNTextHandle, desiredNUnitHandle;
+	enum nUnitType desiredNUnitIdx;
+	double desiredNValue;
+
+	HWND resetBtn;
 
 } bnui_t;
 
@@ -44,6 +66,7 @@ typedef struct bndata
 	HFONT normFont;
 
 	bnui_t ui;
+	double impedance;
 
 } bndata_t;
 
@@ -54,12 +77,18 @@ void bn_free(bndata_t * restrict This);
 HWND bn_createDrop(
 	int x, int y,
 	int cx, int cy,
-	HWND parent,
-	HMENU hmenu,
+	HWND parent, HMENU hmenu,
 	const wchar ** restrict options, usize numopt, usize defopt
+);
+HWND bn_createNumText(
+	int x, int y,
+	int cx, int cy,
+	HWND parent, HMENU hmenu
 );
 usize bn_getDropSel(HWND drop);
 void bn_setFont(HWND hwnd, HFONT hfont);
+bool bn_getBorder(HWND hwnd, int * restrict bx, int * restrict by);
+void bn_setWindowSize(HWND hwnd, int cx, int cy);
 
 
 LRESULT CALLBACK bn_proc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp);
