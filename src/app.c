@@ -143,7 +143,7 @@ HWND bn_createDrop(
 	HWND box = CreateWindowExW(
 		0,
 		L"combobox", NULL,
-		WS_CHILD | WS_VISIBLE | CBS_DROPDOWN | CBS_DROPDOWNLIST,
+		WS_CHILD | WS_VISIBLE | CBS_DROPDOWN | CBS_DROPDOWNLIST | WS_TABSTOP,
 		x,  y,
 		cx, cy,
 		parent,
@@ -179,7 +179,7 @@ HWND bn_createNumText(
 	HWND box = CreateWindowExW(
 		WS_EX_CLIENTEDGE,
 		L"edit", L"",
-		WS_CHILD | WS_VISIBLE | ES_LEFT,
+		WS_CHILD | WS_VISIBLE | ES_LEFT | WS_TABSTOP,
 		x,  y,
 		cx, cy,
 		parent,
@@ -386,7 +386,7 @@ void bn_createUI(bndata_t * restrict This)
 		0,
 		L"button",
 		L"Reset",
-		WS_CHILD | WS_VISIBLE,
+		WS_CHILD | WS_VISIBLE | WS_TABSTOP,
 		bn_defcdpi(RESETBTN_POS_X),  bn_defcdpi(RESETBTN_POS_Y),
 		bn_defcdpi(RESETBTN_SIZE_X), bn_defcdpi(RESETBTN_SIZE_Y),
 		This->hwnd, (HMENU)IDM_RESET,
