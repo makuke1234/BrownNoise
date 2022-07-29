@@ -603,6 +603,7 @@ void bn_update(bndata_t * restrict This)
 	// Updates UI elements based on mode
 	const int type = This->ui.circuitTypeIdx;
 
+	const HBITMAP oldbmp = This->ui.bmp;
 	This->ui.bmp = This->ui.bmps[type];
 	switch (type)
 	{
@@ -617,7 +618,7 @@ void bn_update(bndata_t * restrict This)
 	// Calculate optimal impedance
 	
 	// Refresh only if necessary
-	if (This->impedance != oldImpedance)
+	if ((This->ui.bmp != oldbmp) || (This->impedance != oldImpedance))
 	{
 		InvalidateRect(This->hwnd, NULL, FALSE);
 	}
