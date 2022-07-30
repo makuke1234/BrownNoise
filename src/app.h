@@ -19,6 +19,9 @@ enum nUnitType
 };
 #define DROPNOISEU_SIZE 2
 
+#define NOISE_CONSTANT 1.57
+#define BOLTZMANN_CONSTANT 1.380649e-23
+
 
 enum bwUnitType
 {
@@ -103,6 +106,7 @@ void bn_setFont(HWND hwnd, HFONT hfont);
 bool bn_getBorder(HWND hwnd, int * restrict bx, int * restrict by);
 void bn_setWindowSize(HWND hwnd, int cx, int cy);
 bool bn_isnan(double x);
+double bn_noiseVolts(double value, double bandwidth, enum nUnitType nUnit);
 
 LRESULT CALLBACK bn_proc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp);
 

@@ -240,6 +240,20 @@ bool bn_isnan(double x)
 {
 	return x != x;
 }
+double bn_noiseVolts(double value, double bandwidth, enum nUnitType nUnit)
+{
+	if (nUnit == nutype_nv_rthz)
+	{
+		// Calculate RMS noise voltage based on approximation, that
+		// noise decreases linearly up to 100 Hz and beyond that the response is flat
+
+		return (value * sqrt(bandwidth * NOISE_CONSTANT)) / 1e9;
+	}
+	else
+	{
+		return value / 1e6;
+	}
+}
 
 
 LRESULT CALLBACK bn_proc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp)
@@ -594,7 +608,26 @@ void bn_paint(bndata_t * restrict This, HDC hdc)
 	}
 	else
 	{
-		swprintf_s(result, MAX_RESULT - 1, L"Optimal impedance: %.3g KOhms", This->impedance / 1000.0);
+		// Implement autorange feature
+		const wchar * unit = L"\u2126";
+		double imp = This->impedance;
+		if (imp >= 2e3)
+		{
+			imp /= 1e3;
+			unit = L"K\u2126";
+		}
+		else if (imp >= 2e6)
+		{
+			imp /= 1e6;
+			unit = L"M\u2126";
+		}
+		else if (imp >= 2e9)
+		{
+			imp /= 1e9;
+			unit = L"G\u2126";
+		}
+
+		swprintf_s(result, MAX_RESULT - 1, L"Optimal impedance: %.2f %s", imp, unit);
 	}
 
 	DrawTextW(hdc, result, (int)wcsnlen_s(result, MAX_RESULT), &tr, DT_SINGLELINE | DT_LEFT);
@@ -609,7 +642,6 @@ void bn_command(bndata_t * restrict This, WPARAM wp, LPARAM lp)
 		txt[0] = L'\0';
 		GetWindowTextW((HWND)lp, txt, MAX_RESULT);
 		double value = _wtof(txt);
-		value = (value == 0) ? nan("") : value;
 
 		switch (LOWORD(wp))
 		{
@@ -698,7 +730,50 @@ void bn_update(bndata_t * restrict This)
 			break;
 		}
 		
+		double bw = This->ui.bwValue;
+		switch (This->ui.bwUnitIdx)
+		{
+		case bwutype_khz:
+			bw *= 1e3;
+			break;
+		case bwutype_mhz:
+			bw *= 1e6;
+			break;
+		case bwutype_ghz:
+			bw *= 1e9;
+			break;
+		default:
+			break;
+		}
+
+		const double opNoise  = bn_noiseVolts(This->ui.noiseValue,    bw, This->ui.noiseUnitIdx);
+		const double desNoise = bn_noiseVolts(This->ui.desiredNValue, bw, This->ui.desiredNUnitIdx);
+
+
+		double temp = This->ui.tempValue;
+		switch (This->ui.tempUnitIdx)
+		{
+		case tutype_celsius:
+			temp += 273.15;
+			break;
+		case tutype_fahrenheit:
+			temp = ((temp + 459.67) * 5.0) / 9.0;
+			break;
+		default:
+			break;
+		}
+
 		// Calculates optimal impedance
+		const double allowedNoise = desNoise - opNoise;
+
+		if ((desNoise <= 0.0) || (opNoise <= 0.0) || (allowedNoise <= 0.0) || (temp < 0.0) || (bw <= 0.0))
+		{
+			This->impedance = nan("");
+		}
+		else
+		{
+			This->impedance = (allowedNoise * allowedNoise) / (4.0 * BOLTZMANN_CONSTANT * temp * bw);
+		}
 	}
 	
 	// Refresh only if necessary
