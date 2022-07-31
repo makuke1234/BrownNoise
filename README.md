@@ -23,7 +23,7 @@ This application allows users to enter in desired operating temperature and op-a
 
 # Obtaining
 
-32-bit (x86) & 64-bit (x64) Windows binaries can be obtained [here](https://github.com/makuke1234/BrownNoise/releases).
+64-bit (x64) Windows binaries can be obtained [here](https://github.com/makuke1234/BrownNoise/releases).
 
 
 # Changelog
