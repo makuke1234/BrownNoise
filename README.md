@@ -21,6 +21,17 @@ This application allows users to enter in desired operating temperature and op-a
 ![Integrator](./img/integrator.png)
 
 
+# Obtaining
+
+32-bit (x86) & 64-bit (x64) Windows binaries can be obtained [here](https://github.com/makuke1234/BrownNoise/releases).
+
+
+# Changelog
+
+* 0.1
+	* [x] Initial working beta release
+
+
 # License
 
 This project uses the MIT license.
