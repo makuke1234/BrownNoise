@@ -2,7 +2,7 @@ CC=gcc
 MACROS=-D UNICODE -D _UNICODE
 CDEFFLAGS=$(MACROS) -std=c99 -Wall -Wextra -Wpedantic -Wconversion -Wdouble-promotion -Wstrict-prototypes
 DebFlags=-g -O0 -D _DEBUG
-RelFlags=-O3 -Wl,--strip-all,--build-id=none,--gc-sections -D NDEBUG
+RelFlags=-O3 -Wl,--strip-all,--build-id=none,--gc-sections -D NDEBUG -mwindows
 LIB=-lgdi32 -lcomctl32 -municode
 
 BIN=bin
