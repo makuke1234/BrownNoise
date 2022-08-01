@@ -51,13 +51,38 @@ enum tUnitType
 };
 #define DROPTUNIT_SIZE 3
 
+enum inpUnitType
+{
+	inputype_uv,	
+	inputype_mv,	
+	inputype_volt,	
+	inputype_dbv,	
+	inputype_dbu,	
+	inputype_dbmv,	
+	inputype_dbuv,
+
+	inputype_default = inputype_volt
+};
+#define DROPINPUNIT_SIZE 7
+
+enum snrUnitType
+{
+	snrtype_db,
+	snrtype_linear,
+
+	snrtype_default = snrtype_db
+};
+#define DROPSNRUNIT_SIZE 2
+
 
 #define MAX_RESULT 100
 
-#define DEF_NTEXT  L""
-#define DEF_BWTEXT L"20"
-#define DEF_TTEXT  L"25"
-#define DEF_DNTEXT L""
+#define DEF_NTEXT   L""
+#define DEF_BWTEXT  L"20"
+#define DEF_TTEXT   L"25"
+#define DEF_DNTEXT  L""
+#define DEF_INPTEXT L""
+#define DEF_SNRTEXT L""
 
 typedef struct bnui
 {
@@ -85,6 +110,15 @@ typedef struct bnui
 
 	HWND resetBtn;
 
+
+	HWND inpTextHandle, inpUnitHandle;
+	enum inpUnitType inpUnitIdx;
+	double inpValue;
+
+	HWND snrTextHandle, snrUnitHandle;
+	enum snrUnitType snrUnitIdx;
+	double snrValue;
+
 } bnui_t;
 
 typedef struct bndata
@@ -97,7 +131,8 @@ typedef struct bndata
 	HFONT normFont;
 
 	bnui_t ui;
-	double impedance;
+	double impedance, snrImpedance;
+	double snrFromNoise, noiseFromSnr;
 
 } bndata_t;
 
@@ -130,6 +165,9 @@ void bn_setWindowSize(HWND hwnd, int cx, int cy);
 bool bn_isnan(double x);
 double bn_noiseVolts(double value, double bandwidth, enum nUnitType nUnit);
 HBITMAP bn_loadPNG(HINSTANCE hinst, LPCWSTR rscName);
+int bn_printImpedance(wchar * arr, usize arrLen, const wchar * pilotText, double impedance);
+int bn_printNoise(wchar * arr, usize arrLen, const wchar * pilotText, double volts, enum nUnitType nUnit);
+int bn_printSNR(wchar * arr, usize arrLen, const wchar * pilotText, double snr, enum snrUnitType snrUnit);
 
 LRESULT CALLBACK bn_proc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp);
 
@@ -137,7 +175,7 @@ void bn_createUI(bndata_t * restrict This);
 void bn_size(bndata_t * restrict This);
 void bn_paint(bndata_t * restrict This, HDC hdc);
 void bn_command(bndata_t * restrict This, WPARAM wp, LPARAM lp);
-void bn_update(bndata_t * restrict This);
+void bn_calculate(bndata_t * restrict This);
 void bn_setDefaults(bndata_t * restrict This);
 
 #endif

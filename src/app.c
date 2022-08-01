@@ -9,6 +9,8 @@ static struct
 	const wchar * dropnoiseu[DROPNOISEU_SIZE];
 	const wchar * dropbwunit[DROPBWUNIT_SIZE];
 	const wchar * droptunit[DROPTUNIT_SIZE];
+	const wchar * dropinpunit[DROPINPUNIT_SIZE];
+	const wchar * dropsnrunit[DROPSNRUNIT_SIZE];
 
 } s_def = {
 	.droptype = {
@@ -31,6 +33,19 @@ static struct
 		L"\u00B0C",
 		L"Kelvin",
 		L"\u00B0F"
+	},
+	.dropinpunit = {
+		L"\u00B5V",
+		L"mV",
+		L"V",
+		L"dBV",
+		L"dBu",
+		L"dBmV",
+		L"dB\u00B5V"
+	},
+	.dropsnrunit = {
+		L"dB",
+		L"Linear"
 	}
 };
 
@@ -72,10 +87,27 @@ bool bn_init(bndata_t * restrict This, HINSTANCE hInst)
 			.desiredNTextHandle = NULL,
 			.desiredNUnitHandle = NULL,
 			.desiredNUnitIdx    = nutype_default,
-			.desiredNValue      = 0.0
+			.desiredNValue      = 0.0,
+
+			.resetBtn = NULL,
+
+
+			.inpTextHandle = NULL,
+			.inpUnitHandle = NULL,
+			.inpUnitIdx    = inputype_default,
+			.inpValue      = 0.0,
+
+			.snrTextHandle = NULL,
+			.snrUnitHandle = NULL,
+			.snrUnitIdx    = snrtype_default,
+			.snrValue      = 0.0
 		},
 
-		.impedance = 0.0
+		.impedance    = 0.0,
+		.snrImpedance = 0.0,
+
+		.snrFromNoise = 0.0,
+		.noiseFromSnr = 0.0
 	};
 
 	SetProcessDPIAware();
@@ -282,13 +314,65 @@ double bn_noiseVolts(double value, double bandwidth, enum nUnitType nUnit)
 	}
 }
 
-// Creates a stream object initialized with the data from an executable resource.
-
 
 HBITMAP bn_loadPNG(HINSTANCE hinst, LPCWSTR rscName)
 {
 	return wic_LoadPNG(hinst, rscName);
 }
+
+int bn_printImpedance(wchar * arr, usize arrLen, const wchar * pilotText, double impedance)
+{
+	if (bn_isnan(impedance))
+	{
+		return swprintf_s(arr, arrLen - 1, L"%sNaN", pilotText);
+	}
+	else
+	{
+		// Implement autorange feature
+		const wchar * unit = L"\u2126";
+		double imp = impedance;
+		if (imp >= 2e3)
+		{
+			imp /= 1e3;
+			unit = L"K\u2126";
+		}
+		else if (imp >= 2e6)
+		{
+			imp /= 1e6;
+			unit = L"M\u2126";
+		}
+		else if (imp >= 2e9)
+		{
+			imp /= 1e9;
+			unit = L"G\u2126";
+		}
+
+		return swprintf_s(arr, arrLen - 1, L"%s%.2f %s", pilotText, imp, unit);
+	}
+}
+int bn_printNoise(wchar * arr, usize arrLen, const wchar * pilotText, double volts, enum nUnitType nUnit)
+{
+	if (bn_isnan(volts))
+	{
+		return swprintf_s(arr, arrLen - 1, L"%sNaN", pilotText);
+	}
+	else
+	{
+		return swprintf_s(arr, arrLen - 1, L"%s%.2f %s", pilotText, volts, s_def.dropnoiseu[nUnit]);
+	}
+}
+int bn_printSNR(wchar * arr, usize arrLen, const wchar * pilotText, double snr, enum snrUnitType snrUnit)
+{
+	if (bn_isnan(snr))
+	{
+		return swprintf_s(arr, arrLen - 1, L"%sNaN", pilotText);
+	}
+	else
+	{
+		return swprintf_s(arr, arrLen - 1, L"%s%.2f %s", pilotText, snr, s_def.dropsnrunit[snrUnit]);
+	}
+}
+
 
 
 LRESULT CALLBACK bn_proc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp)
@@ -489,7 +573,38 @@ void bn_createUI(bndata_t * restrict This)
 	);
 	bn_setFont(This->ui.desiredNUnitHandle, This->normFont);
 
-	bn_setDefaults(This);
+
+	This->ui.inpTextHandle = bn_createNumText(
+		bn_defcdpi(INP_POS_X),  bn_defcdpi(INP_POS_Y),
+		bn_defcdpi(INP_SIZE_X), bn_defcdpi(INP_SIZE_Y),
+		This->hwnd, (HMENU)IDT_INP
+	);
+	bn_setFont(This->ui.inpTextHandle, This->normFont);
+
+	This->ui.inpUnitHandle = bn_createDrop(
+		bn_defcdpi(DROPINP_POS_X),  bn_defcdpi(DROPINP_POS_Y),
+		bn_defcdpi(DROPINP_SIZE_X), bn_defcdpi(DROPINP_SIZE_Y),
+		This->hwnd, (HMENU)IDD_DROPINP,
+		s_def.dropinpunit, DROPINPUNIT_SIZE
+	);
+	bn_setFont(This->ui.inpUnitHandle, This->normFont);
+
+	This->ui.snrTextHandle = bn_createNumText(
+		bn_defcdpi(SNR_POS_X),  bn_defcdpi(SNR_POS_Y),
+		bn_defcdpi(SNR_SIZE_X), bn_defcdpi(SNR_SIZE_Y),
+		This->hwnd, (HMENU)IDT_SNR
+	);
+	bn_setFont(This->ui.snrTextHandle, This->normFont);
+
+	This->ui.snrUnitHandle = bn_createDrop(
+		bn_defcdpi(DROPSNR_POS_X),  bn_defcdpi(DROPSNR_POS_Y),
+		bn_defcdpi(DROPSNR_SIZE_X), bn_defcdpi(DROPSNR_SIZE_Y),
+		This->hwnd, (HMENU)IDD_DROPSNR,
+		s_def.dropsnrunit, DROPSNRUNIT_SIZE
+	);
+	bn_setFont(This->ui.snrUnitHandle, This->normFont);
+
+
 
 	This->ui.resetBtn = CreateWindowExW(
 		0,
@@ -503,7 +618,8 @@ void bn_createUI(bndata_t * restrict This)
 	);
 	bn_setFont(This->ui.resetBtn, This->normFont);
 
-	SetFocus(This->ui.noiseTextHandle);
+
+	bn_setDefaults(This);
 }
 void bn_size(bndata_t * restrict This)
 {
@@ -567,6 +683,34 @@ void bn_size(bndata_t * restrict This)
 		bn_defcdpi(DROPDESIREDN_SIZE_X), bn_defcdpi(DROPDESIREDN_SIZE_Y),
 		SWP_NOZORDER | SWP_NOOWNERZORDER
 	);
+
+
+	SetWindowPos(
+		This->ui.inpTextHandle, NULL,
+		bn_defcdpi(INP_POS_X),  bn_defcdpi(INP_POS_Y),
+		bn_defcdpi(INP_SIZE_X), bn_defcdpi(INP_SIZE_Y),
+		SWP_NOZORDER | SWP_NOOWNERZORDER
+	);
+	SetWindowPos(
+		This->ui.inpUnitHandle, NULL,
+		bn_defcdpi(DROPINP_POS_X),  bn_defcdpi(DROPINP_POS_Y),
+		bn_defcdpi(DROPINP_SIZE_X), bn_defcdpi(DROPINP_SIZE_Y),
+		SWP_NOZORDER | SWP_NOOWNERZORDER
+	);
+
+	SetWindowPos(
+		This->ui.snrTextHandle, NULL,
+		bn_defcdpi(SNR_POS_X),  bn_defcdpi(SNR_POS_Y),
+		bn_defcdpi(SNR_SIZE_X), bn_defcdpi(SNR_SIZE_Y),
+		SWP_NOZORDER | SWP_NOOWNERZORDER
+	);
+	SetWindowPos(
+		This->ui.snrUnitHandle, NULL,
+		bn_defcdpi(DROPSNR_POS_X),  bn_defcdpi(DROPSNR_POS_Y),
+		bn_defcdpi(DROPSNR_SIZE_X), bn_defcdpi(DROPSNR_SIZE_Y),
+		SWP_NOZORDER | SWP_NOOWNERZORDER
+	);
+
 
 	SetWindowPos(
 		This->ui.resetBtn, NULL,
@@ -638,38 +782,33 @@ void bn_paint(bndata_t * restrict This, HDC hdc)
 	tr.top    = bn_defcdpi(RESULT_S_POS_Y);
 	tr.right  = tr.left + bn_defcdpi(RESULT_S_SIZE_X);
 	tr.bottom = tr.top  + bn_defcdpi(RESULT_S_SIZE_Y);
-
 	wchar_t result[MAX_RESULT];
-	result[0] = L'\0';
-	if (bn_isnan(This->impedance))
-	{
-		swprintf_s(result, MAX_RESULT - 1, L"Optimal impedance: NaN");
-	}
-	else
-	{
-		// Implement autorange feature
-		const wchar * unit = L"\u2126";
-		double imp = This->impedance;
-		if (imp >= 2e3)
-		{
-			imp /= 1e3;
-			unit = L"K\u2126";
-		}
-		else if (imp >= 2e6)
-		{
-			imp /= 1e6;
-			unit = L"M\u2126";
-		}
-		else if (imp >= 2e9)
-		{
-			imp /= 1e9;
-			unit = L"G\u2126";
-		}
+	usize len = (usize)bn_printImpedance(result, MAX_RESULT, L"Optimal impedance based on noise: ", This->impedance);
+	bn_printSNR(result + len, MAX_RESULT - len, L"\nSNR based on noise floor: ", This->snrFromNoise, This->ui.snrUnitIdx);
+	DrawTextW(hdc, result, (int)wcsnlen_s(result, MAX_RESULT), &tr, DT_LEFT);
 
-		swprintf_s(result, MAX_RESULT - 1, L"Optimal impedance: %.2f %s", imp, unit);
-	}
 
-	DrawTextW(hdc, result, (int)wcsnlen_s(result, MAX_RESULT), &tr, DT_SINGLELINE | DT_LEFT);
+	tr.left   = bn_defcdpi(INP_S_POS_X);
+	tr.top    = bn_defcdpi(INP_S_POS_Y);
+	tr.right  = tr.left + bn_defcdpi(INP_S_SIZE_X);
+	tr.bottom = tr.top  + bn_defcdpi(INP_S_SIZE_Y);
+	DrawTextW(hdc, L"Input level:", -1, &tr, DT_SINGLELINE | DT_CENTER);
+
+	tr.left   = bn_defcdpi(SNR_S_POS_X);
+	tr.top    = bn_defcdpi(SNR_S_POS_Y);
+	tr.right  = tr.left + bn_defcdpi(SNR_S_SIZE_X);
+	tr.bottom = tr.top  + bn_defcdpi(SNR_S_SIZE_Y);
+	DrawTextW(hdc, L"Desired signal-to-noise ratio (SNR):", -1, &tr, DT_SINGLELINE | DT_CENTER);
+
+
+	tr.left   = bn_defcdpi(RESULTSNR_S_POS_X);
+	tr.top    = bn_defcdpi(RESULTSNR_S_POS_Y);
+	tr.right  = tr.left + bn_defcdpi(RESULTSNR_S_SIZE_X);
+	tr.bottom = tr.top  + bn_defcdpi(RESULTSNR_S_SIZE_Y);
+	len = (usize)bn_printImpedance(result, MAX_RESULT, L"Optimal impedance based on SNR: ", This->snrImpedance);
+	bn_printNoise(result + len, MAX_RESULT - len, L"\nNoise floor based on SNR: ", This->noiseFromSnr, This->ui.desiredNUnitIdx);
+	DrawTextW(hdc, result, (int)wcsnlen_s(result, MAX_RESULT), &tr, DT_LEFT);
+
 }
 void bn_command(bndata_t * restrict This, WPARAM wp, LPARAM lp)
 {
@@ -696,9 +835,15 @@ void bn_command(bndata_t * restrict This, WPARAM wp, LPARAM lp)
 		case IDT_DESIREDN:
 			This->ui.desiredNValue = value;
 			break;
+		case IDT_INP:
+			This->ui.inpValue = value;
+			break;
+		case IDT_SNR:
+			This->ui.snrValue = value;
+			break;
 		}
 
-		bn_update(This);
+		bn_calculate(This);
 	}
 	// Drop-list action
 	else if (HIWORD(wp) == CBN_SELCHANGE)
@@ -721,9 +866,15 @@ void bn_command(bndata_t * restrict This, WPARAM wp, LPARAM lp)
 		case IDD_DROPDESIREDN:
 			This->ui.desiredNUnitIdx = idx;
 			break;
+		case IDD_DROPINP:
+			This->ui.inpUnitIdx = idx;
+			break;
+		case IDD_DROPSNR:
+			This->ui.snrUnitIdx = idx;
+			break;
 		}
 
-		bn_update(This);
+		bn_calculate(This);
 	}
 	// Normal button presses
 	else
@@ -737,17 +888,20 @@ void bn_command(bndata_t * restrict This, WPARAM wp, LPARAM lp)
 		}
 	}
 }
-void bn_update(bndata_t * restrict This)
+void bn_calculate(bndata_t * restrict This)
 {
-	const double oldImpedance = This->impedance;
+	const double oldImpedance = This->impedance, oldSnrImpedance = This->snrImpedance,
+		oldSnrFromNoise = This->snrFromNoise, oldNoiseFromSnr = This->noiseFromSnr;
 	
 	const int type = This->ui.circuitTypeIdx;
 
 	const HBITMAP oldbmp = This->ui.bmp;
 	This->ui.bmp = This->ui.bmps[type];
 
+	double opNoise, temp, bw, desNoise;
+	
 	if (bn_isnan(This->ui.noiseValue) || bn_isnan(This->ui.bwValue) ||
-		bn_isnan(This->ui.tempValue) || bn_isnan(This->ui.desiredNValue))
+		bn_isnan(This->ui.tempValue)  || bn_isnan(This->ui.desiredNValue))
 	{
 		This->impedance = nan("");
 	}
@@ -764,7 +918,7 @@ void bn_update(bndata_t * restrict This)
 			break;
 		}
 		
-		double bw = This->ui.bwValue;
+		bw = This->ui.bwValue;
 		switch (This->ui.bwUnitIdx)
 		{
 		case bwutype_khz:
@@ -780,11 +934,11 @@ void bn_update(bndata_t * restrict This)
 			break;
 		}
 
-		const double opNoise  = bn_noiseVolts(This->ui.noiseValue,    bw, This->ui.noiseUnitIdx);
-		const double desNoise = bn_noiseVolts(This->ui.desiredNValue, bw, This->ui.desiredNUnitIdx);
+		opNoise  = bn_noiseVolts(This->ui.noiseValue,    bw, This->ui.noiseUnitIdx);
+		desNoise = bn_noiseVolts(This->ui.desiredNValue, bw, This->ui.desiredNUnitIdx);
 
 
-		double temp = This->ui.tempValue;
+		temp = This->ui.tempValue;
 		switch (This->ui.tempUnitIdx)
 		{
 		case tutype_celsius:
@@ -809,6 +963,112 @@ void bn_update(bndata_t * restrict This)
 			This->impedance = (allowedNoise * allowedNoise) / (4.0 * BOLTZMANN_CONSTANT * temp * bw);
 		}
 	}
+
+	const bool calcSnrFromNoise = !(bn_isnan(This->impedance) || bn_isnan(This->ui.inpValue));
+	const bool calcSnrImpedance = calcSnrFromNoise && !bn_isnan(This->ui.snrValue);
+
+	if (!calcSnrImpedance)
+	{
+		This->snrImpedance = nan("");
+	}
+
+	if (calcSnrFromNoise)
+	{
+		double input = This->ui.inpValue;
+		switch (This->ui.inpUnitIdx)
+		{
+		case inputype_uv:
+			input /= 1e6;
+			break;
+		case inputype_mv:
+			input /= 1e3;
+			break;
+		case inputype_volt:
+			break;
+		case inputype_dbuv:
+			input -= 60.0;
+			/* fallthrough */
+		case inputype_dbmv:
+			input -= 60.0;
+			/* fallthough */
+		case inputype_dbv:
+			input = pow(10.0, input / 20.0);
+			break;
+		case inputype_dbu:
+			input = pow(10.0, input / 20.0) * sqrt(0.6);
+			break;
+		}
+
+		if (calcSnrImpedance)
+		{
+			double snr = This->ui.snrValue;
+			switch (This->ui.snrUnitIdx)
+			{
+			case snrtype_db:
+				snr = pow(10.0, snr / 20.0);
+				break;
+			default:
+				break;
+			}
+
+			if ((input <= 0.0) || (snr <= 0.0))
+			{
+				This->snrImpedance = nan("");
+			}
+			else
+			{
+				This->noiseFromSnr = input / snr;
+				const double allowedNoise = This->noiseFromSnr - opNoise;
+				if (allowedNoise <= 0.0)
+				{
+					This->snrImpedance = nan("");
+				}
+				else
+				{
+					This->snrImpedance = (allowedNoise * allowedNoise) / (4.0 * BOLTZMANN_CONSTANT * temp * bw);
+				}
+			}
+		}
+		
+		if (input <= 0.0)
+		{
+			This->snrFromNoise = nan("");
+		}
+		else
+		{
+			This->snrFromNoise = input / desNoise;
+		}
+	}
+	else
+	{
+		This->snrFromNoise = nan("");
+	}
+
+	// Convert to correct units
+	if (!bn_isnan(This->snrFromNoise))
+	{
+		if (This->ui.snrUnitIdx == snrtype_db)
+		{
+			This->snrFromNoise = 20.0 * log10(This->snrFromNoise);
+		}
+	}
+	if (!bn_isnan(This->noiseFromSnr))
+	{
+		switch (This->ui.desiredNUnitIdx)
+		{
+		case nutype_nv_rthz:
+			This->noiseFromSnr = (This->noiseFromSnr * 1e9) / sqrt(bw * NOISE_CONSTANT);
+			break;
+		case nutype_uv_rms:
+			This->noiseFromSnr *= 1e6;
+			break;
+		case nutype_dbv:
+			This->noiseFromSnr = 20.0 * log10(This->noiseFromSnr);
+			break;
+		default:
+			break;
+		}
+	}
 	
 	// Refresh only if necessary
 	if (This->ui.bmp != oldbmp)
@@ -821,13 +1081,23 @@ void bn_update(bndata_t * restrict This)
 		};
 		InvalidateRect(This->hwnd, &br, FALSE);
 	}
-	if (This->impedance != oldImpedance)
+	if ((This->impedance != oldImpedance) || (This->snrFromNoise != oldSnrFromNoise))
 	{
 		const RECT tr = {
 			.left   = bn_defcdpi(RESULT_S_POS_X),
 			.top    = bn_defcdpi(RESULT_S_POS_Y),
 			.right  = tr.left + bn_defcdpi(RESULT_S_SIZE_X),
 			.bottom = tr.top  + bn_defcdpi(RESULT_S_SIZE_Y)
+		};
+		InvalidateRect(This->hwnd, &tr, TRUE);
+	}
+	if ((This->snrImpedance != oldSnrImpedance) || (This->noiseFromSnr != oldNoiseFromSnr))
+	{
+		const RECT tr = {
+			.left   = bn_defcdpi(RESULTSNR_S_POS_X),
+			.top    = bn_defcdpi(RESULTSNR_S_POS_Y),
+			.right  = tr.left + bn_defcdpi(RESULTSNR_S_SIZE_X),
+			.bottom = tr.top  + bn_defcdpi(RESULTSNR_S_SIZE_Y)
 		};
 		InvalidateRect(This->hwnd, &tr, TRUE);
 	}
@@ -839,11 +1109,18 @@ void bn_setDefaults(bndata_t * restrict This)
 	SetWindowTextW(This->ui.tempTextHandle,     DEF_TTEXT);
 	SetWindowTextW(This->ui.desiredNTextHandle, DEF_DNTEXT);
 
+	SetWindowTextW(This->ui.inpTextHandle, DEF_INPTEXT);
+	SetWindowTextW(This->ui.snrTextHandle, DEF_SNRTEXT);
+
 	bn_setDropSel(This->ui.circuitTypeHandle,  This->ui.circuitTypeIdx  = circtype_default);
 	bn_setDropSel(This->ui.noiseUnitHandle,    This->ui.noiseUnitIdx    = nutype_default);
 	bn_setDropSel(This->ui.bwUnitHandle,       This->ui.bwUnitIdx       = bwutype_default);
 	bn_setDropSel(This->ui.tempUnitHandle,     This->ui.tempUnitIdx     = tutype_default);
 	bn_setDropSel(This->ui.desiredNUnitHandle, This->ui.desiredNUnitIdx = nutype_default);
+
+
+	bn_setDropSel(This->ui.inpUnitHandle, This->ui.inpUnitIdx = inputype_default);
+	bn_setDropSel(This->ui.snrUnitHandle, This->ui.snrUnitIdx = snrtype_default);
 
 	SetFocus(This->ui.noiseTextHandle);
 }
