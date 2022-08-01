@@ -152,7 +152,7 @@ HWND bn_createDrop(
 	HWND box = CreateWindowExW(
 		0,
 		L"combobox", NULL,
-		WS_CHILD | WS_VISIBLE | CBS_DROPDOWN | CBS_DROPDOWNLIST | WS_TABSTOP,
+		WS_CHILD | WS_VISIBLE | CBS_DROPDOWNLIST | WS_TABSTOP,
 		x,  y,
 		cx, cy,
 		parent,
@@ -207,7 +207,7 @@ HWND bn_createNumText(
 	HWND box = CreateWindowExW(
 		WS_EX_CLIENTEDGE,
 		L"edit", L"",
-		WS_CHILD | WS_VISIBLE | ES_LEFT | WS_TABSTOP,
+		WS_CHILD | WS_VISIBLE | ES_CENTER | WS_TABSTOP,
 		x,  y,
 		cx, cy,
 		parent,
@@ -603,31 +603,31 @@ void bn_paint(bndata_t * restrict This, HDC hdc)
 		.right  = tr.left + bn_defcdpi(DROPTYPE_S_SIZE_X),
 		.bottom = tr.top  + bn_defcdpi(DROPTYPE_S_SIZE_Y)
 	};
-	DrawTextW(hdc, L"Select circuit type:", -1, &tr, DT_SINGLELINE | DT_LEFT);
+	DrawTextW(hdc, L"Circuit type:", -1, &tr, DT_SINGLELINE | DT_LEFT);
 
 	tr.left   = bn_defcdpi(NOISE_S_POS_X);
 	tr.top    = bn_defcdpi(NOISE_S_POS_Y);
 	tr.right  = tr.left + bn_defcdpi(NOISE_S_SIZE_X);
 	tr.bottom = tr.top  + bn_defcdpi(NOISE_S_SIZE_Y);
-	DrawTextW(hdc, L"Op-amp input noise voltage:", -1, &tr, DT_SINGLELINE | DT_LEFT);
+	DrawTextW(hdc, L"Op-amp input noise voltage:", -1, &tr, DT_SINGLELINE | DT_CENTER);
 
 	tr.left   = bn_defcdpi(BW_S_POS_X);
 	tr.top    = bn_defcdpi(BW_S_POS_Y);
 	tr.right  = tr.left + bn_defcdpi(BW_S_SIZE_X);
 	tr.bottom = tr.top  + bn_defcdpi(BW_S_SIZE_Y);
-	DrawTextW(hdc, L"Bandwidth:", -1, &tr, DT_SINGLELINE | DT_LEFT);
+	DrawTextW(hdc, L"Bandwidth:", -1, &tr, DT_SINGLELINE | DT_CENTER);
 
 	tr.left   = bn_defcdpi(TEMP_S_POS_X);
 	tr.top    = bn_defcdpi(TEMP_S_POS_Y);
 	tr.right  = tr.left + bn_defcdpi(TEMP_S_SIZE_X);
 	tr.bottom = tr.top  + bn_defcdpi(TEMP_S_SIZE_Y);
-	DrawTextW(hdc, L"Operating temperature:", -1, &tr, DT_SINGLELINE | DT_LEFT);
+	DrawTextW(hdc, L"Operating temperature:", -1, &tr, DT_SINGLELINE | DT_CENTER);
 
 	tr.left   = bn_defcdpi(DESIREDN_S_POS_X);
 	tr.top    = bn_defcdpi(DESIREDN_S_POS_Y);
 	tr.right  = tr.left + bn_defcdpi(DESIREDN_S_SIZE_X);
 	tr.bottom = tr.top  + bn_defcdpi(DESIREDN_S_SIZE_Y);
-	DrawTextW(hdc, L"Desired noise voltage:", -1, &tr, DT_SINGLELINE | DT_LEFT);
+	DrawTextW(hdc, L"Desired output noise voltage:", -1, &tr, DT_SINGLELINE | DT_CENTER);
 
 	
 	tr.left   = bn_defcdpi(RESULT_S_POS_X);

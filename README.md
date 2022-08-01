@@ -28,6 +28,8 @@ This application allows users to enter in desired operating temperature and op-a
 
 # Changelog
 
+* 0.4
+	* [x] Tweak UI element spacing
 * 0.3
 	* [x] Fix StretchBlt horrible quality -> images now clear
 	* [x] RMS-noise as default unit
