@@ -1,3 +1,6 @@
+# Windows-specific
+RM=del
+
 CC=gcc
 MACROS=-D UNICODE -D _UNICODE
 CDEFFLAGS=$(MACROS) -std=c99 -Wall -Wextra -Wpedantic -Wconversion -Wdouble-promotion -Wstrict-prototypes
@@ -24,13 +27,17 @@ DEBOBJFILES:=$(DEBOBJFILES:$(SRC)/%=$(OBJ)/%)
 
 
 default: debug
+.PHONY: rel deb release debug release_files debug_files clean
 
 rel: release
 deb: debug
 
-release: $(RELOBJFILES)
+release: $(BIN) release_files
+debug:   $(BIN) debug_files
+
+release_files: $(RELOBJFILES)
 	$(CC) $^ -o $(BIN)/$(TARGET).exe $(CDEFFLAGS) $(RelFlags) $(LIB)
-debug: $(DEBOBJFILES)
+debug_files: $(DEBOBJFILES)
 	$(CC) $^ -o $(BIN)/deb$(TARGET).exe $(CDEFFLAGS) $(DebFlags) $(LIB)
 
 
@@ -51,5 +58,6 @@ $(BIN):
 	mkdir $(BIN)
 
 clean:
-	rm -r -f $(OBJ)
-	rm -f $(BIN)/*.exe
+	$(RM) /F $(OBJ) /Q
+	$(RM) .\\$(BIN)\\$(TARGET).exe
+	$(RM) .\\$(BIN)\\deb$(TARGET).exe
