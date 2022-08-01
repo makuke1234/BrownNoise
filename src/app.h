@@ -2,6 +2,7 @@
 #define APP_H
 
 #include "winapi.h"
+#include "winapihelper.h"
 
 enum circuitType
 {
@@ -107,6 +108,7 @@ bool bn_getBorder(HWND hwnd, int * restrict bx, int * restrict by);
 void bn_setWindowSize(HWND hwnd, int cx, int cy);
 bool bn_isnan(double x);
 double bn_noiseVolts(double value, double bandwidth, enum nUnitType nUnit);
+HBITMAP bn_loadPNG(HINSTANCE hinst, LPCWSTR rscName);
 
 LRESULT CALLBACK bn_proc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp);
 

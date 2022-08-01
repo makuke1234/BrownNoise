@@ -28,6 +28,8 @@ This application allows users to enter in desired operating temperature and op-a
 
 # Changelog
 
+* 0.2
+	* [x] Compressed the images -> replaced BMP with PNG
 * 0.1
 	* [x] Initial working beta release
 
