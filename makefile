@@ -1,4 +1,5 @@
 # Windows-specific
+SHELL=cmd
 RM=del
 
 CC=gcc
