@@ -18,7 +18,8 @@ static struct
 	},
 	.dropnoiseu = {
 		L"nV/\u221AHz",
-		L"\u00B5V RMS"
+		L"\u00B5V RMS",
+		L"dBV"
 	},
 	.dropbwunit = {
 		L"Hz",
@@ -265,16 +266,19 @@ bool bn_isnan(double x)
 }
 double bn_noiseVolts(double value, double bandwidth, enum nUnitType nUnit)
 {
-	if (nUnit == nutype_nv_rthz)
+	switch (nUnit)
 	{
+	case nutype_nv_rthz:
 		// Calculate RMS noise voltage based on approximation, that
 		// noise decreases linearly up to 100 Hz and beyond that the response is flat
 
 		return (value * sqrt(bandwidth * NOISE_CONSTANT)) / 1e9;
-	}
-	else
-	{
+	case nutype_uv_rms:
 		return value / 1e6;
+	case nutype_dbv:
+		return pow(10.0, value / 20.0);
+	default:
+		return value;
 	}
 }
 

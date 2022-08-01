@@ -19,10 +19,11 @@ enum nUnitType
 {
 	nutype_nv_rthz,
 	nutype_uv_rms,
+	nutype_dbv,
 
 	nutype_default = nutype_uv_rms
 };
-#define DROPNOISEU_SIZE 2
+#define DROPNOISEU_SIZE 3
 
 #define NOISE_CONSTANT 1.57
 #define BOLTZMANN_CONSTANT 1.380649e-23

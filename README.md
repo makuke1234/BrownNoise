@@ -28,6 +28,8 @@ This application allows users to enter in desired operating temperature and op-a
 
 # Changelog
 
+* 0.5
+	* [x] Add decibel support as the noise voltage
 * 0.4
 	* [x] Tweak UI element spacing
 * 0.3
