@@ -51,26 +51,26 @@ bool bn_init(bndata_t * restrict This, HINSTANCE hInst)
 			.bmp  = NULL,
 
 			.circuitTypeHandle = NULL,
-			.circuitTypeIdx    = circtype_norm,
+			.circuitTypeIdx    = circtype_default,
 			
 			.noiseTextHandle = NULL,
 			.noiseUnitHandle = NULL,
-			.noiseUnitIdx    = nutype_nv_rthz,
+			.noiseUnitIdx    = nutype_default,
 			.noiseValue      = 0.0,
 
 			.bwTextHandle = NULL,
 			.bwUnitHandle = NULL,
-			.bwUnitIdx    = bwutype_khz,
+			.bwUnitIdx    = bwutype_default,
 			.bwValue      = 0.0,
 
 			.tempTextHandle = NULL,
 			.tempUnitHandle = NULL,
-			.tempUnitIdx    = tutype_celsius,
+			.tempUnitIdx    = tutype_default,
 			.tempValue      = 0.0,
 			
 			.desiredNTextHandle = NULL,
 			.desiredNUnitHandle = NULL,
-			.desiredNUnitIdx    = nutype_nv_rthz,
+			.desiredNUnitIdx    = nutype_default,
 			.desiredNValue      = 0.0
 		},
 
@@ -140,15 +140,14 @@ HWND bn_createDrop(
 	int x, int y,
 	int cx, int cy,
 	HWND parent, HMENU hmenu,
-	const wchar ** restrict options, usize numopt, usize defopt
+	const wchar ** restrict options, usize numopt
 )
 {
 	assert(parent != NULL);
 	assert(options != NULL);
 	assert(numopt > 0);
-	assert(((WPARAM)numopt) != (WPARAM)-1);
+	assert(((WPARAM)numopt) != ((WPARAM)-1));
 	assert(options[0] != NULL);
-	assert(defopt < numopt);
 
 	HWND box = CreateWindowExW(
 		0,
@@ -173,10 +172,29 @@ HWND bn_createDrop(
 		SendMessageW(box, CB_ADDSTRING, 0, (LPARAM)options[i]);
 	}
 
+	return box;
+}
+HWND bn_createDropDef(
+	int x, int y,
+	int cx, int cy,
+	HWND parent, HMENU hmenu,
+	const wchar ** restrict options, usize numopt, usize defopt
+)
+{
+	HWND box = bn_createDrop(
+		x, y,
+		cx, cy,
+		parent, hmenu,
+		options, numopt
+	);
+	if (box == NULL)
+	{
+		return NULL;
+	}
+
 	// Set default value
-	const WPARAM wpdefopt = (WPARAM)defopt;
-	assert(wpdefopt != (WPARAM)-1);
-	SendMessageW(box, CB_SETCURSEL, wpdefopt, 0);
+	assert(((WPARAM)defopt) < ((WPARAM)numopt));
+	bn_setDropSel(box, defopt);
 
 	return box;
 }
@@ -202,6 +220,12 @@ HWND bn_createNumText(
 usize bn_getDropSel(HWND drop)
 {
 	return (usize)SendMessageW(drop, CB_GETCURSEL, 0, 0);
+}
+void bn_setDropSel(HWND drop, usize sel)
+{
+	const WPARAM wpdefopt = (WPARAM)sel;
+	assert(wpdefopt != (WPARAM)-1);
+	SendMessageW(drop, CB_SETCURSEL, wpdefopt, 0);
 }
 void bn_setFont(HWND hwnd, HFONT hfont)
 {
@@ -397,7 +421,7 @@ void bn_createUI(bndata_t * restrict This)
 		bn_defcdpi(DROPTYPE_POS_X), bn_defcdpi(DROPTYPE_POS_Y),
 		bn_defcdpi(DROPTYPE_SIZE_X), bn_defcdpi(DROPTYPE_SIZE_Y),
 		This->hwnd, (HMENU)IDD_DROPTYPE,
-		s_def.droptype, DROPTYPE_SIZE, This->ui.circuitTypeIdx
+		s_def.droptype, DROPTYPE_SIZE
 	);
 	bn_setFont(This->ui.circuitTypeHandle, This->normFont);
 
@@ -412,7 +436,7 @@ void bn_createUI(bndata_t * restrict This)
 		bn_defcdpi(DROPNOISEU_POS_X),  bn_defcdpi(DROPNOISEU_POS_Y),
 		bn_defcdpi(DROPNOISEU_SIZE_X), bn_defcdpi(DROPNOISEU_SIZE_Y),
 		This->hwnd, (HMENU)IDD_DROPNOISEU,
-		s_def.dropnoiseu, DROPNOISEU_SIZE, This->ui.noiseUnitIdx
+		s_def.dropnoiseu, DROPNOISEU_SIZE
 	);
 	bn_setFont(This->ui.noiseUnitHandle, This->normFont);
 
@@ -427,7 +451,7 @@ void bn_createUI(bndata_t * restrict This)
 		bn_defcdpi(DROPBWUNIT_POS_X),  bn_defcdpi(DROPBWUNIT_POS_Y),
 		bn_defcdpi(DROPBWUNIT_SIZE_X), bn_defcdpi(DROPBWUNIT_SIZE_Y),
 		This->hwnd, (HMENU)IDD_DROPBWUNIT,
-		s_def.dropbwunit, DROPBWUNIT_SIZE, This->ui.bwUnitIdx
+		s_def.dropbwunit, DROPBWUNIT_SIZE
 	);
 	bn_setFont(This->ui.bwUnitHandle, This->normFont);
 
@@ -442,7 +466,7 @@ void bn_createUI(bndata_t * restrict This)
 		bn_defcdpi(DROPTUNIT_POS_X),  bn_defcdpi(DROPTUNIT_POS_Y),
 		bn_defcdpi(DROPTUNIT_SIZE_X), bn_defcdpi(DROPTUNIT_SIZE_Y),
 		This->hwnd, (HMENU)IDD_DROPTUNIT,
-		s_def.droptunit, DROPTUNIT_SIZE, This->ui.tempUnitIdx
+		s_def.droptunit, DROPTUNIT_SIZE
 	);
 	bn_setFont(This->ui.tempUnitHandle, This->normFont);
 
@@ -457,9 +481,11 @@ void bn_createUI(bndata_t * restrict This)
 		bn_defcdpi(DROPDESIREDN_POS_X),  bn_defcdpi(DROPDESIREDN_POS_Y),
 		bn_defcdpi(DROPDESIREDN_SIZE_X), bn_defcdpi(DROPDESIREDN_SIZE_Y),
 		This->hwnd, (HMENU)IDD_DROPDESIREDN,
-		s_def.dropnoiseu, DROPNOISEU_SIZE, This->ui.desiredNUnitIdx
+		s_def.dropnoiseu, DROPNOISEU_SIZE
 	);
 	bn_setFont(This->ui.desiredNUnitHandle, This->normFont);
+
+	bn_setDefaults(This);
 
 	This->ui.resetBtn = CreateWindowExW(
 		0,
@@ -553,6 +579,8 @@ void bn_paint(bndata_t * restrict This, HDC hdc)
 
 	BITMAP bitmap;
 	GetObject(This->ui.bmp, sizeof bitmap, &bitmap);
+	// Set StrechBlt mode
+	SetStretchBltMode(hdc, HALFTONE);
 	StretchBlt(
 		hdc,
 		0, 0,
@@ -700,12 +728,7 @@ void bn_command(bndata_t * restrict This, WPARAM wp, LPARAM lp)
 		{
 		// Reset button
 		case IDM_RESET:
-			SetWindowTextW(This->ui.noiseTextHandle,    L"");
-			SetWindowTextW(This->ui.bwTextHandle,       L"");
-			SetWindowTextW(This->ui.tempTextHandle,     L"");
-			SetWindowTextW(This->ui.desiredNTextHandle, L"");
-			
-			SetFocus(This->ui.noiseTextHandle);
+			bn_setDefaults(This);
 			break;
 		}
 	}
@@ -804,4 +827,19 @@ void bn_update(bndata_t * restrict This)
 		};
 		InvalidateRect(This->hwnd, &tr, TRUE);
 	}
+}
+void bn_setDefaults(bndata_t * restrict This)
+{
+	SetWindowTextW(This->ui.noiseTextHandle,    DEF_NTEXT);
+	SetWindowTextW(This->ui.bwTextHandle,       DEF_BWTEXT);
+	SetWindowTextW(This->ui.tempTextHandle,     DEF_TTEXT);
+	SetWindowTextW(This->ui.desiredNTextHandle, DEF_DNTEXT);
+
+	bn_setDropSel(This->ui.circuitTypeHandle,  This->ui.circuitTypeIdx  = circtype_default);
+	bn_setDropSel(This->ui.noiseUnitHandle,    This->ui.noiseUnitIdx    = nutype_default);
+	bn_setDropSel(This->ui.bwUnitHandle,       This->ui.bwUnitIdx       = bwutype_default);
+	bn_setDropSel(This->ui.tempUnitHandle,     This->ui.tempUnitIdx     = tutype_default);
+	bn_setDropSel(This->ui.desiredNUnitHandle, This->ui.desiredNUnitIdx = nutype_default);
+
+	SetFocus(This->ui.noiseTextHandle);
 }

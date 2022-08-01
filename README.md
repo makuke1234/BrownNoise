@@ -28,6 +28,10 @@ This application allows users to enter in desired operating temperature and op-a
 
 # Changelog
 
+* 0.3
+	* [x] Fix StretchBlt horrible quality -> images now clear
+	* [x] RMS-noise as default unit
+	* [x] Better reset function
 * 0.2
 	* [x] Compressed the images -> replaced BMP with PNG
 * 0.1
