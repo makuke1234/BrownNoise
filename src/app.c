@@ -1,8 +1,7 @@
 #include "app.h"
 #include "resource.h"
 #include "error.h"
-#include "winapi.h"
-
+#include "wicwrapper.h"
 
 static struct
 {
@@ -255,6 +254,14 @@ double bn_noiseVolts(double value, double bandwidth, enum nUnitType nUnit)
 	}
 }
 
+// Creates a stream object initialized with the data from an executable resource.
+
+
+HBITMAP bn_loadPNG(HINSTANCE hinst, LPCWSTR rscName)
+{
+	return wic_LoadPNG(hinst, rscName);
+}
+
 
 LRESULT CALLBACK bn_proc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp)
 {
@@ -376,9 +383,9 @@ void bn_createUI(bndata_t * restrict This)
 		L"Segoe UI"
 	);
 
-	This->ui.bmps[circtype_norm]       = LoadBitmapW(This->hinst, MAKEINTRESOURCEW(IDB_NORM));
-	This->ui.bmps[circtype_diff]       = LoadBitmapW(This->hinst, MAKEINTRESOURCEW(IDB_DIFF));
-	This->ui.bmps[circtype_integrator] = LoadBitmapW(This->hinst, MAKEINTRESOURCEW(IDB_INT));
+	This->ui.bmps[circtype_norm]       = bn_loadPNG(This->hinst, MAKEINTRESOURCEW(IDB_NORM));
+	This->ui.bmps[circtype_diff]       = bn_loadPNG(This->hinst, MAKEINTRESOURCEW(IDB_DIFF));
+	This->ui.bmps[circtype_integrator] = bn_loadPNG(This->hinst, MAKEINTRESOURCEW(IDB_INT));
 
 	assert(This->ui.bmps[circtype_norm]       != NULL);
 	assert(This->ui.bmps[circtype_diff]       != NULL);

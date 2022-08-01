@@ -4,9 +4,9 @@ CREATEPROCESS_MANIFEST_RESOURCE_ID RT_MANIFEST "xpstyles.manifest"
 
 IDI_APPLICATION ICON "assets/appicon.ico"
 
-IDB_NORM BITMAP "assets/opamp_regular.bmp"
-IDB_DIFF BITMAP "assets/opamp_diff.bmp"
-IDB_INT  BITMAP "assets/opamp_integrator.bmp"
+IDB_NORM PNG "assets/opamp_regular.png"
+IDB_DIFF PNG "assets/opamp_diff.png"
+IDB_INT  PNG "assets/opamp_integrator.png"
 
 
 #include <winver.h>
