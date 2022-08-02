@@ -898,7 +898,7 @@ void bn_calculate(bndata_t * restrict This)
 	const HBITMAP oldbmp = This->ui.bmp;
 	This->ui.bmp = This->ui.bmps[type];
 
-	double opNoise, temp, bw = 1.0, desNoise = nan(""), input;
+	double opNoise = 0.0, temp = 0.0, bw = 1.0, desNoise = nan(""), input = 0.0;
 
 	if (!bn_isnan(This->ui.desiredNValue))
 	{
