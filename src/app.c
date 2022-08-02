@@ -898,10 +898,20 @@ void bn_calculate(bndata_t * restrict This)
 	const HBITMAP oldbmp = This->ui.bmp;
 	This->ui.bmp = This->ui.bmps[type];
 
-	double opNoise, temp, bw = 1.0, desNoise;
+	double opNoise, temp, bw = 1.0, desNoise = nan(""), input;
+
+	if (!bn_isnan(This->ui.desiredNValue))
+	{
+		desNoise = bn_noiseVolts(This->ui.desiredNValue, bw, This->ui.desiredNUnitIdx);
+		if (desNoise <= 0.0)
+		{
+			desNoise = nan("");
+		}
+	}
+
 	
 	if (bn_isnan(This->ui.noiseValue) || bn_isnan(This->ui.bwValue) ||
-		bn_isnan(This->ui.tempValue)  || bn_isnan(This->ui.desiredNValue))
+		bn_isnan(This->ui.tempValue)  || bn_isnan(desNoise))
 	{
 		This->impedance = nan("");
 	}
@@ -934,9 +944,7 @@ void bn_calculate(bndata_t * restrict This)
 			break;
 		}
 
-		opNoise  = bn_noiseVolts(This->ui.noiseValue,    bw, This->ui.noiseUnitIdx);
-		desNoise = bn_noiseVolts(This->ui.desiredNValue, bw, This->ui.desiredNUnitIdx);
-
+		opNoise = bn_noiseVolts(This->ui.noiseValue, bw, This->ui.noiseUnitIdx);
 
 		temp = This->ui.tempValue;
 		switch (This->ui.tempUnitIdx)
@@ -954,7 +962,7 @@ void bn_calculate(bndata_t * restrict This)
 		// Calculates optimal impedance
 		const double allowedNoise = desNoise - opNoise;
 
-		if ((desNoise <= 0.0) || (opNoise <= 0.0) || (allowedNoise <= 0.0) || (temp < 0.0) || (bw <= 0.0))
+		if ((opNoise <= 0.0) || (allowedNoise <= 0.0) || (temp < 0.0) || (bw <= 0.0))
 		{
 			This->impedance = nan("");
 		}
@@ -964,17 +972,14 @@ void bn_calculate(bndata_t * restrict This)
 		}
 	}
 
-	const bool calcSnrFromNoise = !(bn_isnan(This->impedance) || bn_isnan(This->ui.inpValue));
-	const bool calcSnrImpedance = calcSnrFromNoise && !bn_isnan(This->ui.snrValue);
 
-	if (!calcSnrImpedance)
+	if ((bn_isnan(This->ui.inpValue)) || (bn_isnan(This->ui.snrValue)))
 	{
-		This->snrImpedance = nan("");
+		This->noiseFromSnr = nan("");
 	}
-
-	if (calcSnrFromNoise)
+	else
 	{
-		double input = This->ui.inpValue;
+		input = This->ui.inpValue;
 		switch (This->ui.inpUnitIdx)
 		{
 		case inputype_uv:
@@ -987,10 +992,10 @@ void bn_calculate(bndata_t * restrict This)
 			break;
 		case inputype_dbuv:
 			input -= 60.0;
-			/* fallthrough */
+			/* fall through */
 		case inputype_dbmv:
 			input -= 60.0;
-			/* fallthough */
+			/* fall through */
 		case inputype_dbv:
 			input = pow(10.0, input / 20.0);
 			break;
@@ -999,34 +1004,46 @@ void bn_calculate(bndata_t * restrict This)
 			break;
 		}
 
+		double snr = This->ui.snrValue;
+		switch (This->ui.snrUnitIdx)
+		{
+		case snrtype_db:
+			snr = pow(10.0, snr / 20.0);
+			break;
+		default:
+			break;
+		}
+
+		if ((bn_isnan(input)) || (bn_isnan(snr)) || (input <= 0.0) || (snr <= 0.0))
+		{
+			This->noiseFromSnr = nan("");
+		}
+		else
+		{
+			This->noiseFromSnr = input / snr;
+		}
+	}
+
+	const bool calcSnrFromNoise = !(bn_isnan(This->ui.desiredNValue) || bn_isnan(This->ui.inpValue));
+	const bool calcSnrImpedance = calcSnrFromNoise && !(bn_isnan(This->noiseFromSnr) || bn_isnan(This->impedance));
+
+	if (!calcSnrImpedance)
+	{
+		This->snrImpedance = nan("");
+	}
+
+	if (calcSnrFromNoise)
+	{
 		if (calcSnrImpedance)
 		{
-			double snr = This->ui.snrValue;
-			switch (This->ui.snrUnitIdx)
-			{
-			case snrtype_db:
-				snr = pow(10.0, snr / 20.0);
-				break;
-			default:
-				break;
-			}
-
-			if ((input <= 0.0) || (snr <= 0.0))
+			const double allowedNoise = This->noiseFromSnr - opNoise;
+			if (allowedNoise <= 0.0)
 			{
 				This->snrImpedance = nan("");
 			}
 			else
 			{
-				This->noiseFromSnr = input / snr;
-				const double allowedNoise = This->noiseFromSnr - opNoise;
-				if (allowedNoise <= 0.0)
-				{
-					This->snrImpedance = nan("");
-				}
-				else
-				{
-					This->snrImpedance = (allowedNoise * allowedNoise) / (4.0 * BOLTZMANN_CONSTANT * temp * bw);
-				}
+				This->snrImpedance = (allowedNoise * allowedNoise) / (4.0 * BOLTZMANN_CONSTANT * temp * bw);
 			}
 		}
 		

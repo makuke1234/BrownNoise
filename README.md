@@ -28,6 +28,8 @@ This application allows users to enter in desired operating temperature and op-a
 
 # Changelog
 
+* 0.6.1
+	* [x] Calculations as flexible as possible
 * 0.6
 	* [x] SNR calculations based on noise floor and input level
 	* [x] Optimal impedance calculations based on SNR and input level
