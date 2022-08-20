@@ -119,6 +119,8 @@ typedef struct bnui
 	enum snrUnitType snrUnitIdx;
 	double snrValue;
 
+	HBRUSH hbrGroup1, hbrGroup2, hbrGroup3, hbrGroup4;
+
 } bnui_t;
 
 typedef struct bndata
@@ -168,6 +170,11 @@ HBITMAP bn_loadPNG(HINSTANCE hinst, LPCWSTR rscName);
 int bn_printImpedance(wchar * arr, usize arrLen, const wchar * pilotText, double impedance);
 int bn_printNoise(wchar * arr, usize arrLen, const wchar * pilotText, double volts, enum nUnitType nUnit);
 int bn_printSNR(wchar * arr, usize arrLen, const wchar * pilotText, double snr, enum snrUnitType snrUnit);
+
+int bn_paintColCtrl(HDC hdc, HBRUSH brush, int xoff, int yoff);
+bool bn_paintColCtrlx(HDC hdc, int xoff, int yoff, int numColors, ...);
+int bn_paintColStat(HDC hdc, HBRUSH brush, int xoff, int yoff);
+
 
 LRESULT CALLBACK bn_proc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp);
 

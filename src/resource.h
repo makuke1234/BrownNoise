@@ -10,6 +10,12 @@
 #define VERSION_SEQUENCE      0,6,1
 #define VERSION_SEQUENCE_STR "0.6.1"
 
+#define GROUP1_COLOR RGB(181, 230,  29)
+#define GROUP2_COLOR RGB(255, 128,  64)
+#define GROUP3_COLOR RGB(255, 0,  14)
+#define GROUP4_COLOR RGB(255, 201,  14)
+
+
 #define IDB_NORM 101
 #define IDB_DIFF 102
 #define IDB_INT  103

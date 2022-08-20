@@ -100,7 +100,12 @@ bool bn_init(bndata_t * restrict This, HINSTANCE hInst)
 			.snrTextHandle = NULL,
 			.snrUnitHandle = NULL,
 			.snrUnitIdx    = snrtype_default,
-			.snrValue      = 0.0
+			.snrValue      = 0.0,
+
+			.hbrGroup1 = CreateSolidBrush(GROUP1_COLOR),
+			.hbrGroup2 = CreateSolidBrush(GROUP2_COLOR),
+			.hbrGroup3 = CreateSolidBrush(GROUP3_COLOR),
+			.hbrGroup4 = CreateSolidBrush(GROUP4_COLOR)
 		},
 
 		.impedance    = 0.0,
@@ -166,6 +171,13 @@ void bn_loop(bndata_t * restrict This)
 }
 void bn_free(bndata_t * restrict This)
 {
+	assert(This->init != false);
+	
+	DeleteObject(This->ui.hbrGroup1);
+	DeleteObject(This->ui.hbrGroup2);
+	DeleteObject(This->ui.hbrGroup3);
+	DeleteObject(This->ui.hbrGroup4);
+	
 	This->init = false;
 }
 
@@ -373,6 +385,59 @@ int bn_printSNR(wchar * arr, usize arrLen, const wchar * pilotText, double snr, 
 	}
 }
 
+int bn_paintColCtrl(HDC hdc, HBRUSH brush, int xoff, int yoff)
+{
+	return FillRect(
+		hdc,
+		&(RECT){
+			.left   = xoff,
+			.top    = yoff,
+			.right  = xoff + bn_defcdpi(PANESIZE_X),
+			.bottom = yoff + bn_defcdpi(BN_STATIC_Y + BN_MARGIN + BN_CONTROL_Y)
+		},
+		brush
+	);
+}
+bool bn_paintColCtrlx(HDC hdc, int xoff, int yoff, int numColors, ...)
+{
+	assert(hdc != NULL);
+	assert(numColors > 0);
+
+	RECT r = {
+		.left   = xoff,
+		.top    = yoff,
+		.right  = xoff,
+		.bottom = yoff + bn_defcdpi(BN_STATIC_Y + BN_MARGIN + BN_CONTROL_Y)
+	};
+
+	va_list ap;
+	va_start(ap, numColors);
+
+	bool ret = true;
+	for (int i = 0; i < numColors; ++i)
+	{
+		r.left  = r.right;
+		r.right = xoff + ((i + 1) * bn_defcdpi(PANESIZE_X)) / numColors;
+		ret &= FillRect(hdc, &r, va_arg(ap, HBRUSH)) != 0;
+	}
+
+	va_end(ap);
+
+	return ret;
+}
+int bn_paintColStat(HDC hdc, HBRUSH brush, int xoff, int yoff)
+{
+	return FillRect(
+		hdc,
+		&(RECT){
+			.left   = xoff,
+			.top    = yoff,
+			.right  = xoff + bn_defcdpi(PANESIZE_X),
+			.bottom = yoff + bn_defcdpi(BN_STATIC_Y)
+		},
+		brush
+	);
+}
 
 
 LRESULT CALLBACK bn_proc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp)
@@ -741,7 +806,25 @@ void bn_paint(bndata_t * restrict This, HDC hdc)
 
 	SelectObject(hdcmem, oldbitmap);
 	DeleteDC(hdcmem);
+
+	// Draw colored boxes
+	bn_paintColCtrlx(hdc, 0, bn_defcdpi(NOISE_S_POS_Y),    3, This->ui.hbrGroup1, This->ui.hbrGroup2, This->ui.hbrGroup3);
+	bn_paintColCtrlx(hdc, 0, bn_defcdpi(BW_S_POS_Y),       3, This->ui.hbrGroup1, This->ui.hbrGroup2, This->ui.hbrGroup3);
+	bn_paintColCtrlx(hdc, 0, bn_defcdpi(TEMP_S_POS_Y),     3, This->ui.hbrGroup1, This->ui.hbrGroup2, This->ui.hbrGroup3);
+	bn_paintColCtrlx(hdc, 0, bn_defcdpi(DESIREDN_S_POS_Y), 3, This->ui.hbrGroup1, This->ui.hbrGroup2, This->ui.hbrGroup2);
 	
+	bn_paintColStat(hdc, This->ui.hbrGroup1, 0, bn_defcdpi(RESULT_S_POS_Y));
+	bn_paintColStat(hdc, This->ui.hbrGroup2, 0, bn_defcdpi(RESULT_S_POS_Y + BN_STATIC_Y));
+
+
+	bn_paintColCtrlx(hdc, bn_defcdpi(PANESIZE_X), bn_defcdpi(INP_S_POS_Y), 3, This->ui.hbrGroup4, This->ui.hbrGroup2, This->ui.hbrGroup3);
+	bn_paintColCtrlx(hdc, bn_defcdpi(PANESIZE_X), bn_defcdpi(SNR_S_POS_Y), 3, This->ui.hbrGroup4, This->ui.hbrGroup4, This->ui.hbrGroup3);
+	
+	bn_paintColStat(hdc, This->ui.hbrGroup3, bn_defcdpi(PANESIZE_X), bn_defcdpi(RESULTSNR_S_POS_Y));
+	bn_paintColStat(hdc, This->ui.hbrGroup4, bn_defcdpi(PANESIZE_X), bn_defcdpi(RESULTSNR_S_POS_Y + BN_STATIC_Y));
+	
+
+
 	SetBkMode(hdc, TRANSPARENT);
 	SelectObject(hdc, This->normFont);
 
@@ -808,7 +891,6 @@ void bn_paint(bndata_t * restrict This, HDC hdc)
 	len = (usize)bn_printImpedance(result, MAX_RESULT, L"Optimal impedance based on SNR: ", This->snrImpedance);
 	bn_printNoise(result + len, MAX_RESULT - len, L"\nNoise floor based on SNR: ", This->noiseFromSnr, This->ui.desiredNUnitIdx);
 	DrawTextW(hdc, result, (int)wcsnlen_s(result, MAX_RESULT), &tr, DT_LEFT);
-
 }
 void bn_command(bndata_t * restrict This, WPARAM wp, LPARAM lp)
 {
@@ -909,13 +991,13 @@ void bn_calculate(bndata_t * restrict This)
 		}
 	}
 
-	
-	if (bn_isnan(This->ui.noiseValue) || bn_isnan(This->ui.bwValue) ||
-		bn_isnan(This->ui.tempValue)  || bn_isnan(desNoise))
+	bool first3Boxes = !(bn_isnan(This->ui.noiseValue) || bn_isnan(This->ui.bwValue) || bn_isnan(This->ui.tempValue));
+
+	if (!first3Boxes || bn_isnan(desNoise))
 	{
 		This->impedance = nan("");
 	}
-	else
+	if (first3Boxes)
 	{
 		// Updates UI elements based on mode
 		switch (type)
@@ -962,7 +1044,9 @@ void bn_calculate(bndata_t * restrict This)
 		// Calculates optimal impedance
 		const double allowedNoise = desNoise - opNoise;
 
-		if ((opNoise <= 0.0) || (allowedNoise <= 0.0) || (temp < 0.0) || (bw <= 0.0))
+		first3Boxes = !((opNoise <= 0.0) || (temp < 0.0) || (bw <= 0.0));
+
+		if (!first3Boxes || (allowedNoise <= 0.0))
 		{
 			This->impedance = nan("");
 		}
@@ -973,11 +1057,9 @@ void bn_calculate(bndata_t * restrict This)
 	}
 
 
-	if ((bn_isnan(This->ui.inpValue)) || (bn_isnan(This->ui.snrValue)))
-	{
-		This->noiseFromSnr = nan("");
-	}
-	else
+	const bool calcNoiseFromSnr = !(bn_isnan(This->ui.inpValue) || bn_isnan(This->ui.snrValue));
+	
+	if (calcNoiseFromSnr)
 	{
 		input = This->ui.inpValue;
 		switch (This->ui.inpUnitIdx)
@@ -1023,29 +1105,33 @@ void bn_calculate(bndata_t * restrict This)
 			This->noiseFromSnr = input / snr;
 		}
 	}
+	else
+	{
+		This->noiseFromSnr = nan("");
+	}
 
 	const bool calcSnrFromNoise = !(bn_isnan(This->ui.desiredNValue) || bn_isnan(This->ui.inpValue));
-	const bool calcSnrImpedance = calcSnrFromNoise && !(bn_isnan(This->noiseFromSnr) || bn_isnan(This->impedance));
+	const bool calcSnrImpedance = calcNoiseFromSnr && !bn_isnan(This->noiseFromSnr) && first3Boxes;
 
-	if (!calcSnrImpedance)
+	if (calcSnrImpedance)
+	{
+		const double allowedNoise = This->noiseFromSnr - opNoise;
+		if (allowedNoise <= 0.0)
+		{
+			This->snrImpedance = nan("");
+		}
+		else
+		{
+			This->snrImpedance = (allowedNoise * allowedNoise) / (4.0 * BOLTZMANN_CONSTANT * temp * bw);
+		}
+	}
+	else
 	{
 		This->snrImpedance = nan("");
 	}
 
 	if (calcSnrFromNoise)
 	{
-		if (calcSnrImpedance)
-		{
-			const double allowedNoise = This->noiseFromSnr - opNoise;
-			if (allowedNoise <= 0.0)
-			{
-				This->snrImpedance = nan("");
-			}
-			else
-			{
-				This->snrImpedance = (allowedNoise * allowedNoise) / (4.0 * BOLTZMANN_CONSTANT * temp * bw);
-			}
-		}
 		
 		if (input <= 0.0)
 		{
