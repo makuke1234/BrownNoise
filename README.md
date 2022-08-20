@@ -17,8 +17,8 @@ This application allows users to enter in desired operating temperature and op-a
 ### Normal feedback mode
 ![Normal feedback](./img/normal.png)
 
-### Integrator (capacitive) feedback mode
-![Integrator](./img/integrator.png)
+### Optimal impedance calculations based on SNR
+![Integrator](./img/snrimpedance.png)
 
 
 # Obtaining
@@ -28,6 +28,8 @@ This application allows users to enter in desired operating temperature and op-a
 
 # Changelog
 
+* 0.6.2
+	* [x] Color-coding to show which values affect which results
 * 0.6.1
 	* [x] Calculations as flexible as possible
 * 0.6
