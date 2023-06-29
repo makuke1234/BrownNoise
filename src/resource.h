@@ -3,41 +3,45 @@
 
 #include "winapi.h"
 
-#define BROWN_NOISE_CLASS L"BrownNoiseClass"
-#define BROWN_NOISE_TITLE_ASCII "BrownNoise"
-#define BROWN_NOISE_TITLE (L"" BROWN_NOISE_TITLE_ASCII)
+#define BROWN_NOISE_CLASS        L"BrownNoiseClass"
+#define BROWN_NOISE_TITLE_ASCII   "BrownNoise"
+#define BROWN_NOISE_TITLE       (L"" BROWN_NOISE_TITLE_ASCII)
 
-#define VERSION_SEQUENCE      0,6,2
-#define VERSION_SEQUENCE_STR "0.6.2"
+#define BROWN_SCROLL_MOUSEWHEEL  0xFE
+#define BROWN_SCROLL_KEEPPOS     0xFF
 
-#define GROUP1_COLOR RGB(153, 217, 234)
-#define GROUP2_COLOR RGB(232, 218, 178)
-#define GROUP3_COLOR RGB(196, 194, 214)
-#define GROUP4_COLOR RGB(176, 212, 183)
+#define VERSION_SEQUENCE       0,6,2
+#define VERSION_SEQUENCE_STR  "0.6.2"
 
-
-#define IDB_NORM 101
-#define IDB_DIFF 102
-#define IDB_INT  103
-
-#define IDD_DROPTYPE     110
-#define IDT_NOISE        111
-#define IDD_DROPNOISEU   112
-#define IDT_BANDWIDTH    113
-#define IDD_DROPBWUNIT   114
-#define IDT_TEMP         115
-#define IDD_DROPTUNIT    116
-#define IDT_DESIREDN     117
-#define IDD_DROPDESIREDN 118
-
-#define IDT_INP     119
-#define IDD_DROPINP 120
-#define IDT_SNR     121
-#define IDD_DROPSNR 122
-
-#define IDM_RESET 123
+#define GROUP1_COLOR  RGB(153, 217, 234)
+#define GROUP2_COLOR  RGB(232, 218, 178)
+#define GROUP3_COLOR  RGB(196, 194, 214)
+#define GROUP4_COLOR  RGB(176, 212, 183)
 
 
+#define IDB_NORM          101
+#define IDB_DIFF          102
+#define IDB_INT           103
+
+#define IDD_DROPTYPE      110
+#define IDT_NOISE         111
+#define IDD_DROPNOISEU    112
+#define IDT_BANDWIDTH     113
+#define IDD_DROPBWUNIT    114
+#define IDT_TEMP          115
+#define IDD_DROPTUNIT     116
+#define IDT_DESIREDN      117
+#define IDD_DROPDESIREDN  118
+
+#define IDT_INP           119
+#define IDD_DROPINP       120
+#define IDT_SNR           121
+#define IDD_DROPSNR       122
+
+#define IDM_RESET         123
+
+#define SIZE_X_MIN PANESIZE_X
+#define SIZE_Y_MIN 200
 
 #define PANESIZE_X 400
 #define SIZE_X     2 * PANESIZE_X

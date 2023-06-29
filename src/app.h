@@ -136,6 +136,8 @@ typedef struct bndata
 	double impedance, snrImpedance;
 	double snrFromNoise, noiseFromSnr;
 
+	int scrollY;
+
 } bndata_t;
 
 bool bn_init(bndata_t * restrict This, HINSTANCE hinst);
@@ -179,6 +181,8 @@ int bn_paintColStat(HDC hdc, HBRUSH brush, int xoff, int yoff);
 LRESULT CALLBACK bn_proc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp);
 
 void bn_createUI(bndata_t * restrict This);
+void bn_scroll(bndata_t * restrict This, WPARAM wParam);
+void bn_updateScrollbar(bndata_t * restrict This);
 void bn_size(bndata_t * restrict This);
 void bn_paint(bndata_t * restrict This, HDC hdc);
 void bn_command(bndata_t * restrict This, WPARAM wp, LPARAM lp);

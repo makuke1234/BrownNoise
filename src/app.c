@@ -112,7 +112,9 @@ bool bn_init(bndata_t * restrict This, HINSTANCE hInst)
 		.snrImpedance = 0.0,
 
 		.snrFromNoise = 0.0,
-		.noiseFromSnr = 0.0
+		.noiseFromSnr = 0.0,
+
+		.scrollY = 0
 	};
 
 	SetProcessDPIAware();
@@ -132,9 +134,9 @@ bool bn_init(bndata_t * restrict This, HINSTANCE hInst)
 	This->hwnd = CreateWindowExW(
 		0,
 		BROWN_NOISE_CLASS, BROWN_NOISE_TITLE,
-		WS_OVERLAPPEDWINDOW & (DWORD)~( WS_MAXIMIZEBOX ),
+		WS_OVERLAPPEDWINDOW & ~((DWORD)WS_MAXIMIZEBOX),
 		CW_USEDEFAULT, CW_USEDEFAULT,
-		SIZE_X, SIZE_Y,
+		SIZE_X, SIZE_Y-100,
 		NULL, NULL, GetModuleHandleW(NULL), This
 	);
 	if (This->hwnd == NULL)
@@ -478,6 +480,8 @@ LRESULT CALLBACK bn_proc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp)
 		bn_command(This, wp, lp);
 		break;
 	case WM_SIZE:
+		bn_scroll(This, BROWN_SCROLL_KEEPPOS);
+		bn_updateScrollbar(This);
 		break;
 	case WM_SIZING:
 	{
@@ -489,45 +493,60 @@ LRESULT CALLBACK bn_proc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp)
 		}
 		else
 		{
-			// Prevent resizing
+			// Prevent resizing too small
 			RECT * rc = (RECT *)lp;
 			assert(rc != NULL);
 
 			int bx, by;
 			bn_getBorder(hwnd, &bx, &by);
+
+			bool x_small = (rc->right  - rc->left - bx) < bn_defcdpi(SIZE_X_MIN);
+			bool y_small = (rc->bottom - rc->top  - by) < bn_defcdpi(SIZE_Y_MIN);
 			
 			// X-direction
-			switch (wp)
+			if (x_small)
 			{
-			case WMSZ_TOPLEFT:
-			case WMSZ_LEFT:
-			case WMSZ_BOTTOMLEFT:
-				rc->left = rc->right - bn_defcdpi(SIZE_X) - bx;
-				break;
-			case WMSZ_TOPRIGHT:
-			case WMSZ_RIGHT:
-			case WMSZ_BOTTOMRIGHT:
-				rc->right = rc->left + bn_defcdpi(SIZE_X) + bx;
-				break;
+				switch (wp)
+				{
+				case WMSZ_TOPLEFT:
+				case WMSZ_LEFT:
+				case WMSZ_BOTTOMLEFT:
+					rc->left = rc->right - (bn_defcdpi(SIZE_X_MIN) + bx);
+					break;
+				case WMSZ_TOPRIGHT:
+				case WMSZ_RIGHT:
+				case WMSZ_BOTTOMRIGHT:
+					rc->right = rc->left + bn_defcdpi(SIZE_X_MIN) + bx;
+					break;
+				}
 			}
 
 			// Y-direction
-			switch (wp)
+			if (y_small)
 			{
-			case WMSZ_TOPLEFT:
-			case WMSZ_TOP:
-			case WMSZ_TOPRIGHT:
-				rc->top = rc->bottom - bn_defcdpi(SIZE_Y) - by;
-				break;
-			case WMSZ_BOTTOMLEFT:
-			case WMSZ_BOTTOM:
-			case WMSZ_BOTTOMRIGHT:
-				rc->bottom = rc->top + bn_defcdpi(SIZE_Y) + by;
-				break;
+				switch (wp)
+				{
+				case WMSZ_TOPLEFT:
+				case WMSZ_TOP:
+				case WMSZ_TOPRIGHT:
+					rc->top = rc->bottom - (bn_defcdpi(SIZE_Y_MIN) + by);
+					break;
+				case WMSZ_BOTTOMLEFT:
+				case WMSZ_BOTTOM:
+				case WMSZ_BOTTOMRIGHT:
+					rc->bottom = rc->top + bn_defcdpi(SIZE_Y_MIN) + by;
+					break;
+				}
 			}
 		}
 		break;
 	}
+	case WM_MOUSEWHEEL:
+		bn_scroll(This, (UINT)MAKELONG(BROWN_SCROLL_MOUSEWHEEL, -(int16_t)HIWORD(wp)));
+		break;
+	case WM_VSCROLL:
+		bn_scroll(This, wp);
+		break;
 	case WM_CREATE:
 		bn_createUI(This);
 		break;
@@ -546,8 +565,14 @@ LRESULT CALLBACK bn_proc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp)
 
 void bn_createUI(bndata_t * restrict This)
 {
+	// Make sure the scrollbar is shown
+	ShowScrollBar(This->hwnd, SB_VERT, TRUE);
+	
 	This->dpi = bn_dpi(This->hwnd);
 	bn_setWindowSize(This->hwnd, bn_defcdpi(SIZE_X), bn_defcdpi(SIZE_Y));
+
+	// Create a scrollbar
+	bn_updateScrollbar(This);
 
 	This->normFont = CreateFontW(
 		bn_deffdpi(11), 0, 0, 0,
@@ -686,6 +711,72 @@ void bn_createUI(bndata_t * restrict This)
 
 	bn_setDefaults(This);
 }
+void bn_scroll(bndata_t * restrict This, WPARAM wParam)
+{
+	WPARAM action = LOWORD(wParam);
+    int pos = -1;
+    if (action == SB_THUMBPOSITION || action == SB_THUMBTRACK)
+	{
+        pos = HIWORD(wParam);
+    }
+	else if (action == SB_LINEDOWN)
+	{
+        pos = This->scrollY + 30;
+    }
+	else if (action == SB_LINEUP)
+	{
+        pos = This->scrollY - 30;
+    }
+	else if (action == BROWN_SCROLL_MOUSEWHEEL)
+	{
+		pos = This->scrollY + (int)((int16_t)HIWORD(wParam));
+	}
+	else if (action == BROWN_SCROLL_KEEPPOS)
+	{
+		pos = This->scrollY;
+	}
+
+
+    if (pos == -1)
+	{
+        return;
+	}
+
+    SCROLLINFO si = { 0 };
+    si.cbSize     = sizeof si;
+    si.fMask      = SIF_POS | SIF_DISABLENOSCROLL;
+    si.nPos       = pos;
+    si.nTrackPos  = 0;
+    SetScrollInfo(This->hwnd, SB_VERT, &si, TRUE);
+    GetScrollInfo(This->hwnd, SB_VERT, &si);
+    pos = si.nPos;
+    POINT pt;
+    pt.x = 0;
+    pt.y = pos - This->scrollY;
+    HDC hdc = GetDC(This->hwnd);
+    LPtoDP(hdc, &pt, 1);
+    ReleaseDC(This->hwnd, hdc);
+    ScrollWindow(This->hwnd, 0, -pt.y, NULL, NULL);
+    This->scrollY = pos;
+}
+void bn_updateScrollbar(bndata_t * restrict This)
+{
+	RECT rc;
+	GetClientRect(This->hwnd, &rc);
+	const uint32_t height = (uint32_t)(rc.bottom - rc.top);
+
+	SCROLLINFO si  = {
+		.cbSize    = sizeof si,
+		.fMask     = SIF_ALL | SIF_DISABLENOSCROLL,
+		.nMin      = 0,
+		.nMax      = bn_defcdpi(SIZE_Y) - 1,
+		.nPage     = height,
+		.nPos      = This->scrollY,
+		.nTrackPos = 0
+	};
+
+	SetScrollInfo(This->hwnd, SB_VERT, &si, TRUE);
+}
 void bn_size(bndata_t * restrict This)
 {
 	bn_setWindowSize(This->hwnd, bn_defcdpi(SIZE_X), bn_defcdpi(SIZE_Y));
@@ -796,7 +887,7 @@ void bn_paint(bndata_t * restrict This, HDC hdc)
 	SetStretchBltMode(hdc, HALFTONE);
 	StretchBlt(
 		hdc,
-		0, 0,
+		0, -This->scrollY,
 		bn_defcdpi(BMP_SIZE_X), bn_defcdpi(BMP_SIZE_Y),
 		hdcmem,
 		0, 0,
@@ -808,20 +899,20 @@ void bn_paint(bndata_t * restrict This, HDC hdc)
 	DeleteDC(hdcmem);
 
 	// Draw colored boxes
-	bn_paintColCtrlx(hdc, 0, bn_defcdpi(NOISE_S_POS_Y),    3, This->ui.hbrGroup1, This->ui.hbrGroup2, This->ui.hbrGroup3);
-	bn_paintColCtrlx(hdc, 0, bn_defcdpi(BW_S_POS_Y),       3, This->ui.hbrGroup1, This->ui.hbrGroup2, This->ui.hbrGroup3);
-	bn_paintColCtrlx(hdc, 0, bn_defcdpi(TEMP_S_POS_Y),     3, This->ui.hbrGroup1, This->ui.hbrGroup2, This->ui.hbrGroup3);
-	bn_paintColCtrlx(hdc, 0, bn_defcdpi(DESIREDN_S_POS_Y), 3, This->ui.hbrGroup1, This->ui.hbrGroup2, This->ui.hbrGroup2);
+	bn_paintColCtrlx(hdc, 0, -This->scrollY+bn_defcdpi(NOISE_S_POS_Y),    3, This->ui.hbrGroup1, This->ui.hbrGroup2, This->ui.hbrGroup3);
+	bn_paintColCtrlx(hdc, 0, -This->scrollY+bn_defcdpi(BW_S_POS_Y),       3, This->ui.hbrGroup1, This->ui.hbrGroup2, This->ui.hbrGroup3);
+	bn_paintColCtrlx(hdc, 0, -This->scrollY+bn_defcdpi(TEMP_S_POS_Y),     3, This->ui.hbrGroup1, This->ui.hbrGroup2, This->ui.hbrGroup3);
+	bn_paintColCtrlx(hdc, 0, -This->scrollY+bn_defcdpi(DESIREDN_S_POS_Y), 3, This->ui.hbrGroup1, This->ui.hbrGroup2, This->ui.hbrGroup2);
 	
-	bn_paintColStat(hdc, This->ui.hbrGroup1, 0, bn_defcdpi(RESULT_S_POS_Y));
-	bn_paintColStat(hdc, This->ui.hbrGroup2, 0, bn_defcdpi(RESULT_S_POS_Y + BN_STATIC_Y));
+	bn_paintColStat(hdc, This->ui.hbrGroup1, 0, -This->scrollY+bn_defcdpi(RESULT_S_POS_Y));
+	bn_paintColStat(hdc, This->ui.hbrGroup2, 0, -This->scrollY+bn_defcdpi(RESULT_S_POS_Y + BN_STATIC_Y));
 
 
-	bn_paintColCtrlx(hdc, bn_defcdpi(PANESIZE_X), bn_defcdpi(INP_S_POS_Y), 3, This->ui.hbrGroup4, This->ui.hbrGroup2, This->ui.hbrGroup3);
-	bn_paintColCtrlx(hdc, bn_defcdpi(PANESIZE_X), bn_defcdpi(SNR_S_POS_Y), 3, This->ui.hbrGroup4, This->ui.hbrGroup4, This->ui.hbrGroup3);
+	bn_paintColCtrlx(hdc, bn_defcdpi(PANESIZE_X), -This->scrollY+bn_defcdpi(INP_S_POS_Y), 3, This->ui.hbrGroup4, This->ui.hbrGroup2, This->ui.hbrGroup3);
+	bn_paintColCtrlx(hdc, bn_defcdpi(PANESIZE_X), -This->scrollY+bn_defcdpi(SNR_S_POS_Y), 3, This->ui.hbrGroup4, This->ui.hbrGroup4, This->ui.hbrGroup3);
 	
-	bn_paintColStat(hdc, This->ui.hbrGroup3, bn_defcdpi(PANESIZE_X), bn_defcdpi(RESULTSNR_S_POS_Y));
-	bn_paintColStat(hdc, This->ui.hbrGroup4, bn_defcdpi(PANESIZE_X), bn_defcdpi(RESULTSNR_S_POS_Y + BN_STATIC_Y));
+	bn_paintColStat(hdc, This->ui.hbrGroup3, bn_defcdpi(PANESIZE_X), -This->scrollY+bn_defcdpi(RESULTSNR_S_POS_Y));
+	bn_paintColStat(hdc, This->ui.hbrGroup4, bn_defcdpi(PANESIZE_X), -This->scrollY+bn_defcdpi(RESULTSNR_S_POS_Y + BN_STATIC_Y));
 	
 
 
@@ -830,39 +921,39 @@ void bn_paint(bndata_t * restrict This, HDC hdc)
 
 	RECT tr = {
 		.left   = bn_defcdpi(DROPTYPE_S_POS_X),
-		.top    = bn_defcdpi(DROPTYPE_S_POS_Y),
+		.top    = -This->scrollY+bn_defcdpi(DROPTYPE_S_POS_Y),
 		.right  = tr.left + bn_defcdpi(DROPTYPE_S_SIZE_X),
 		.bottom = tr.top  + bn_defcdpi(DROPTYPE_S_SIZE_Y)
 	};
 	DrawTextW(hdc, L"Circuit type:", -1, &tr, DT_SINGLELINE | DT_LEFT);
 
 	tr.left   = bn_defcdpi(NOISE_S_POS_X);
-	tr.top    = bn_defcdpi(NOISE_S_POS_Y);
+	tr.top    = -This->scrollY+bn_defcdpi(NOISE_S_POS_Y);
 	tr.right  = tr.left + bn_defcdpi(NOISE_S_SIZE_X);
 	tr.bottom = tr.top  + bn_defcdpi(NOISE_S_SIZE_Y);
 	DrawTextW(hdc, L"Op-amp input noise voltage:", -1, &tr, DT_SINGLELINE | DT_CENTER);
 
 	tr.left   = bn_defcdpi(BW_S_POS_X);
-	tr.top    = bn_defcdpi(BW_S_POS_Y);
+	tr.top    = -This->scrollY+bn_defcdpi(BW_S_POS_Y);
 	tr.right  = tr.left + bn_defcdpi(BW_S_SIZE_X);
 	tr.bottom = tr.top  + bn_defcdpi(BW_S_SIZE_Y);
 	DrawTextW(hdc, L"Bandwidth:", -1, &tr, DT_SINGLELINE | DT_CENTER);
 
 	tr.left   = bn_defcdpi(TEMP_S_POS_X);
-	tr.top    = bn_defcdpi(TEMP_S_POS_Y);
+	tr.top    = -This->scrollY+bn_defcdpi(TEMP_S_POS_Y);
 	tr.right  = tr.left + bn_defcdpi(TEMP_S_SIZE_X);
 	tr.bottom = tr.top  + bn_defcdpi(TEMP_S_SIZE_Y);
 	DrawTextW(hdc, L"Operating temperature:", -1, &tr, DT_SINGLELINE | DT_CENTER);
 
 	tr.left   = bn_defcdpi(DESIREDN_S_POS_X);
-	tr.top    = bn_defcdpi(DESIREDN_S_POS_Y);
+	tr.top    = -This->scrollY+bn_defcdpi(DESIREDN_S_POS_Y);
 	tr.right  = tr.left + bn_defcdpi(DESIREDN_S_SIZE_X);
 	tr.bottom = tr.top  + bn_defcdpi(DESIREDN_S_SIZE_Y);
 	DrawTextW(hdc, L"Desired output noise voltage:", -1, &tr, DT_SINGLELINE | DT_CENTER);
 
 	
 	tr.left   = bn_defcdpi(RESULT_S_POS_X);
-	tr.top    = bn_defcdpi(RESULT_S_POS_Y);
+	tr.top    = -This->scrollY+bn_defcdpi(RESULT_S_POS_Y);
 	tr.right  = tr.left + bn_defcdpi(RESULT_S_SIZE_X);
 	tr.bottom = tr.top  + bn_defcdpi(RESULT_S_SIZE_Y);
 	wchar_t result[MAX_RESULT];
@@ -872,20 +963,20 @@ void bn_paint(bndata_t * restrict This, HDC hdc)
 
 
 	tr.left   = bn_defcdpi(INP_S_POS_X);
-	tr.top    = bn_defcdpi(INP_S_POS_Y);
+	tr.top    = -This->scrollY+bn_defcdpi(INP_S_POS_Y);
 	tr.right  = tr.left + bn_defcdpi(INP_S_SIZE_X);
 	tr.bottom = tr.top  + bn_defcdpi(INP_S_SIZE_Y);
 	DrawTextW(hdc, L"Input level:", -1, &tr, DT_SINGLELINE | DT_CENTER);
 
 	tr.left   = bn_defcdpi(SNR_S_POS_X);
-	tr.top    = bn_defcdpi(SNR_S_POS_Y);
+	tr.top    = -This->scrollY+bn_defcdpi(SNR_S_POS_Y);
 	tr.right  = tr.left + bn_defcdpi(SNR_S_SIZE_X);
 	tr.bottom = tr.top  + bn_defcdpi(SNR_S_SIZE_Y);
 	DrawTextW(hdc, L"Desired signal-to-noise ratio (SNR):", -1, &tr, DT_SINGLELINE | DT_CENTER);
 
 
 	tr.left   = bn_defcdpi(RESULTSNR_S_POS_X);
-	tr.top    = bn_defcdpi(RESULTSNR_S_POS_Y);
+	tr.top    = -This->scrollY+bn_defcdpi(RESULTSNR_S_POS_Y);
 	tr.right  = tr.left + bn_defcdpi(RESULTSNR_S_SIZE_X);
 	tr.bottom = tr.top  + bn_defcdpi(RESULTSNR_S_SIZE_Y);
 	len = (usize)bn_printImpedance(result, MAX_RESULT, L"Optimal impedance based on SNR: ", This->snrImpedance);
